@@ -1,7 +1,7 @@
 /**
  * Headers CORS para las rutas /api/*
  * Flutter nativo normalmente no necesita CORS, pero sí lo necesita
- * si pruebas desde web, emulador o herramientas como Postman/Insomnia.
+ * si pruebas desde web, emulador o herramientas como Postman/Thunder Client.
  */
 
 const ALLOWED_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";

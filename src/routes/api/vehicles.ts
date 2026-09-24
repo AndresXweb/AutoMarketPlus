@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { listVehicles } from "@/lib/market";
-import { corsPreflightResponse, jsonWithCors } from "@/lib/api/cors";
+import { apiError, corsPreflightResponse, jsonWithCors } from "@/lib/api/http";
 
 export const Route = createFileRoute("/api/vehicles")({
   server: {
     handlers: {
       OPTIONS: async ({ request }) => {
-        const origin = request.headers.get("origin");
-        return corsPreflightResponse(origin);
+        return corsPreflightResponse(request.headers.get("origin"));
       },
 
       GET: async ({ request }) => {
@@ -39,8 +38,7 @@ export const Route = createFileRoute("/api/vehicles")({
           const vehicles = await listVehicles({ data: filters });
           return jsonWithCors(vehicles, { status: 200 }, origin);
         } catch (err) {
-          const message = err instanceof Error ? err.message : "Error interno";
-          return jsonWithCors({ error: message }, { status: 500 }, origin);
+          return apiError(err, origin);
         }
       },
     },

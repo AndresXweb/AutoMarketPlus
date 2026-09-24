@@ -28,9 +28,19 @@ import { Route as AdminContactosRouteImport } from './routes/admin/contactos'
 import { Route as AdminOfertasRouteImport } from './routes/admin/ofertas'
 import { Route as AdminUsuariosRouteImport } from './routes/admin/usuarios'
 import { Route as AdminVerificacionesRouteImport } from './routes/admin/verificaciones'
+import { Route as ApiContactRouteImport } from './routes/api/contact'
+import { Route as ApiFavoritesRouteImport } from './routes/api/favorites'
+import { Route as ApiFeaturedRouteImport } from './routes/api/featured'
+import { Route as ApiMeRouteImport } from './routes/api/me'
+import { Route as ApiMyVehiclesRouteImport } from './routes/api/my-vehicles'
+import { Route as ApiOffersRouteImport } from './routes/api/offers'
+import { Route as ApiProfileRouteImport } from './routes/api/profile'
+import { Route as ApiStatsRouteImport } from './routes/api/stats'
 import { Route as ApiVehiclesRouteImport } from './routes/api/vehicles'
 import { Route as VehiculoIdRouteImport } from './routes/vehiculo.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiMyVehiclesIdRouteImport } from './routes/api/my-vehicles.$id'
+import { Route as ApiOffersIdRouteImport } from './routes/api/offers.$id'
 import { Route as ApiVehiclesIdRouteImport } from './routes/api/vehicles.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -128,6 +138,46 @@ const AdminVerificacionesRoute = AdminVerificacionesRouteImport.update({
   path: '/verificaciones',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiContactRoute = ApiContactRouteImport.update({
+  id: '/api/contact',
+  path: '/api/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFavoritesRoute = ApiFavoritesRouteImport.update({
+  id: '/api/favorites',
+  path: '/api/favorites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFeaturedRoute = ApiFeaturedRouteImport.update({
+  id: '/api/featured',
+  path: '/api/featured',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMeRoute = ApiMeRouteImport.update({
+  id: '/api/me',
+  path: '/api/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMyVehiclesRoute = ApiMyVehiclesRouteImport.update({
+  id: '/api/my-vehicles',
+  path: '/api/my-vehicles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOffersRoute = ApiOffersRouteImport.update({
+  id: '/api/offers',
+  path: '/api/offers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProfileRoute = ApiProfileRouteImport.update({
+  id: '/api/profile',
+  path: '/api/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStatsRoute = ApiStatsRouteImport.update({
+  id: '/api/stats',
+  path: '/api/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiVehiclesRoute = ApiVehiclesRouteImport.update({
   id: '/api/vehicles',
   path: '/api/vehicles',
@@ -142,6 +192,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMyVehiclesIdRoute = ApiMyVehiclesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiMyVehiclesRoute,
+} as any)
+const ApiOffersIdRoute = ApiOffersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiOffersRoute,
 } as any)
 const ApiVehiclesIdRoute = ApiVehiclesIdRouteImport.update({
   id: '/$id',
@@ -168,10 +228,20 @@ export interface FileRoutesByFullPath {
   '/admin/ofertas': typeof AdminOfertasRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/verificaciones': typeof AdminVerificacionesRoute
+  '/api/contact': typeof ApiContactRoute
+  '/api/favorites': typeof ApiFavoritesRoute
+  '/api/featured': typeof ApiFeaturedRoute
+  '/api/me': typeof ApiMeRoute
+  '/api/my-vehicles': typeof ApiMyVehiclesRouteWithChildren
+  '/api/offers': typeof ApiOffersRouteWithChildren
+  '/api/profile': typeof ApiProfileRoute
+  '/api/stats': typeof ApiStatsRoute
   '/api/vehicles': typeof ApiVehiclesRouteWithChildren
   '/vehiculo/$id': typeof VehiculoIdRoute
   '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/my-vehicles/$id': typeof ApiMyVehiclesIdRoute
+  '/api/offers/$id': typeof ApiOffersIdRoute
   '/api/vehicles/$id': typeof ApiVehiclesIdRoute
 }
 export interface FileRoutesByTo {
@@ -192,10 +262,20 @@ export interface FileRoutesByTo {
   '/admin/ofertas': typeof AdminOfertasRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/verificaciones': typeof AdminVerificacionesRoute
+  '/api/contact': typeof ApiContactRoute
+  '/api/favorites': typeof ApiFavoritesRoute
+  '/api/featured': typeof ApiFeaturedRoute
+  '/api/me': typeof ApiMeRoute
+  '/api/my-vehicles': typeof ApiMyVehiclesRouteWithChildren
+  '/api/offers': typeof ApiOffersRouteWithChildren
+  '/api/profile': typeof ApiProfileRoute
+  '/api/stats': typeof ApiStatsRoute
   '/api/vehicles': typeof ApiVehiclesRouteWithChildren
   '/vehiculo/$id': typeof VehiculoIdRoute
   '/admin': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/my-vehicles/$id': typeof ApiMyVehiclesIdRoute
+  '/api/offers/$id': typeof ApiOffersIdRoute
   '/api/vehicles/$id': typeof ApiVehiclesIdRoute
 }
 export interface FileRoutesById {
@@ -218,10 +298,20 @@ export interface FileRoutesById {
   '/admin/ofertas': typeof AdminOfertasRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/verificaciones': typeof AdminVerificacionesRoute
+  '/api/contact': typeof ApiContactRoute
+  '/api/favorites': typeof ApiFavoritesRoute
+  '/api/featured': typeof ApiFeaturedRoute
+  '/api/me': typeof ApiMeRoute
+  '/api/my-vehicles': typeof ApiMyVehiclesRouteWithChildren
+  '/api/offers': typeof ApiOffersRouteWithChildren
+  '/api/profile': typeof ApiProfileRoute
+  '/api/stats': typeof ApiStatsRoute
   '/api/vehicles': typeof ApiVehiclesRouteWithChildren
   '/vehiculo/$id': typeof VehiculoIdRoute
   '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/my-vehicles/$id': typeof ApiMyVehiclesIdRoute
+  '/api/offers/$id': typeof ApiOffersIdRoute
   '/api/vehicles/$id': typeof ApiVehiclesIdRoute
 }
 export interface FileRouteTypes {
@@ -245,10 +335,20 @@ export interface FileRouteTypes {
     | '/admin/ofertas'
     | '/admin/usuarios'
     | '/admin/verificaciones'
+    | '/api/contact'
+    | '/api/favorites'
+    | '/api/featured'
+    | '/api/me'
+    | '/api/my-vehicles'
+    | '/api/offers'
+    | '/api/profile'
+    | '/api/stats'
     | '/api/vehicles'
     | '/vehiculo/$id'
     | '/admin/'
     | '/api/auth/$'
+    | '/api/my-vehicles/$id'
+    | '/api/offers/$id'
     | '/api/vehicles/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -269,10 +369,20 @@ export interface FileRouteTypes {
     | '/admin/ofertas'
     | '/admin/usuarios'
     | '/admin/verificaciones'
+    | '/api/contact'
+    | '/api/favorites'
+    | '/api/featured'
+    | '/api/me'
+    | '/api/my-vehicles'
+    | '/api/offers'
+    | '/api/profile'
+    | '/api/stats'
     | '/api/vehicles'
     | '/vehiculo/$id'
     | '/admin'
     | '/api/auth/$'
+    | '/api/my-vehicles/$id'
+    | '/api/offers/$id'
     | '/api/vehicles/$id'
   id:
     | '__root__'
@@ -294,10 +404,20 @@ export interface FileRouteTypes {
     | '/admin/ofertas'
     | '/admin/usuarios'
     | '/admin/verificaciones'
+    | '/api/contact'
+    | '/api/favorites'
+    | '/api/featured'
+    | '/api/me'
+    | '/api/my-vehicles'
+    | '/api/offers'
+    | '/api/profile'
+    | '/api/stats'
     | '/api/vehicles'
     | '/vehiculo/$id'
     | '/admin/'
     | '/api/auth/$'
+    | '/api/my-vehicles/$id'
+    | '/api/offers/$id'
     | '/api/vehicles/$id'
   fileRoutesById: FileRoutesById
 }
@@ -315,6 +435,14 @@ export interface RootRouteChildren {
   RecuperarRoute: typeof RecuperarRoute
   RestablecerRoute: typeof RestablecerRoute
   TerminosRoute: typeof TerminosRoute
+  ApiContactRoute: typeof ApiContactRoute
+  ApiFavoritesRoute: typeof ApiFavoritesRoute
+  ApiFeaturedRoute: typeof ApiFeaturedRoute
+  ApiMeRoute: typeof ApiMeRoute
+  ApiMyVehiclesRoute: typeof ApiMyVehiclesRouteWithChildren
+  ApiOffersRoute: typeof ApiOffersRouteWithChildren
+  ApiProfileRoute: typeof ApiProfileRoute
+  ApiStatsRoute: typeof ApiStatsRoute
   ApiVehiclesRoute: typeof ApiVehiclesRouteWithChildren
   VehiculoIdRoute: typeof VehiculoIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -455,6 +583,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminVerificacionesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/contact': {
+      id: '/api/contact'
+      path: '/api/contact'
+      fullPath: '/api/contact'
+      preLoaderRoute: typeof ApiContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/favorites': {
+      id: '/api/favorites'
+      path: '/api/favorites'
+      fullPath: '/api/favorites'
+      preLoaderRoute: typeof ApiFavoritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/featured': {
+      id: '/api/featured'
+      path: '/api/featured'
+      fullPath: '/api/featured'
+      preLoaderRoute: typeof ApiFeaturedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/me': {
+      id: '/api/me'
+      path: '/api/me'
+      fullPath: '/api/me'
+      preLoaderRoute: typeof ApiMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/my-vehicles': {
+      id: '/api/my-vehicles'
+      path: '/api/my-vehicles'
+      fullPath: '/api/my-vehicles'
+      preLoaderRoute: typeof ApiMyVehiclesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/offers': {
+      id: '/api/offers'
+      path: '/api/offers'
+      fullPath: '/api/offers'
+      preLoaderRoute: typeof ApiOffersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/profile': {
+      id: '/api/profile'
+      path: '/api/profile'
+      fullPath: '/api/profile'
+      preLoaderRoute: typeof ApiProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stats': {
+      id: '/api/stats'
+      path: '/api/stats'
+      fullPath: '/api/stats'
+      preLoaderRoute: typeof ApiStatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/vehicles': {
       id: '/api/vehicles'
       path: '/api/vehicles'
@@ -475,6 +659,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/my-vehicles/$id': {
+      id: '/api/my-vehicles/$id'
+      path: '/$id'
+      fullPath: '/api/my-vehicles/$id'
+      preLoaderRoute: typeof ApiMyVehiclesIdRouteImport
+      parentRoute: typeof ApiMyVehiclesRoute
+    }
+    '/api/offers/$id': {
+      id: '/api/offers/$id'
+      path: '/$id'
+      fullPath: '/api/offers/$id'
+      preLoaderRoute: typeof ApiOffersIdRouteImport
+      parentRoute: typeof ApiOffersRoute
     }
     '/api/vehicles/$id': {
       id: '/api/vehicles/$id'
@@ -506,6 +704,30 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface ApiMyVehiclesRouteChildren {
+  ApiMyVehiclesIdRoute: typeof ApiMyVehiclesIdRoute
+}
+
+const ApiMyVehiclesRouteChildren: ApiMyVehiclesRouteChildren = {
+  ApiMyVehiclesIdRoute: ApiMyVehiclesIdRoute,
+}
+
+const ApiMyVehiclesRouteWithChildren = ApiMyVehiclesRoute._addFileChildren(
+  ApiMyVehiclesRouteChildren,
+)
+
+interface ApiOffersRouteChildren {
+  ApiOffersIdRoute: typeof ApiOffersIdRoute
+}
+
+const ApiOffersRouteChildren: ApiOffersRouteChildren = {
+  ApiOffersIdRoute: ApiOffersIdRoute,
+}
+
+const ApiOffersRouteWithChildren = ApiOffersRoute._addFileChildren(
+  ApiOffersRouteChildren,
+)
+
 interface ApiVehiclesRouteChildren {
   ApiVehiclesIdRoute: typeof ApiVehiclesIdRoute
 }
@@ -532,6 +754,14 @@ const rootRouteChildren: RootRouteChildren = {
   RecuperarRoute: RecuperarRoute,
   RestablecerRoute: RestablecerRoute,
   TerminosRoute: TerminosRoute,
+  ApiContactRoute: ApiContactRoute,
+  ApiFavoritesRoute: ApiFavoritesRoute,
+  ApiFeaturedRoute: ApiFeaturedRoute,
+  ApiMeRoute: ApiMeRoute,
+  ApiMyVehiclesRoute: ApiMyVehiclesRouteWithChildren,
+  ApiOffersRoute: ApiOffersRouteWithChildren,
+  ApiProfileRoute: ApiProfileRoute,
+  ApiStatsRoute: ApiStatsRoute,
   ApiVehiclesRoute: ApiVehiclesRouteWithChildren,
   VehiculoIdRoute: VehiculoIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

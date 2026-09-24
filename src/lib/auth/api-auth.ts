@@ -1,22 +1,22 @@
-import { getSessionUser, UnauthorizedError } from "./verify.server";
+import { UnauthorizedError } from "./verify.server";
 
 /**
  * Autenticación para las rutas /api/* (Flutter y otros clientes externos).
  *
  * - Lee el header Authorization: Bearer <token>
- * - Usa el mismo Better Auth (plugin bearer ya está activo)
- * - NO aplica assertSameSiteRequest (eso es solo para server functions de la web)
+ * - Usa Better Auth (plugin bearer ya activo)
+ * - NO aplica assertSameSiteRequest (solo para server functions web)
  */
-
-/** Devuelve el userId si hay sesión válida, o null si no hay. */
 export async function getApiUserId(request: Request): Promise<string | null> {
-  const authHeader = request.headers.get("Authorization");
-  const bearerToken =
-    authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : undefined;
+  try {
+    const { auth, authConfigured } = await import("./server");
+    if (!authConfigured) return null;
 
-  // getSessionUser ya soporta bearer token (lo usa el live preview)
-  const user = await getSessionUser(bearerToken);
-  return user?.id ?? null;
+    const session = await auth.api.getSession({ headers: request.headers });
+    return session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Igual que getApiUserId, pero lanza 401 si no hay sesión. */

@@ -1,14 +1,12 @@
-// src/routes/api/vehicles.$id.ts
 import { createFileRoute } from "@tanstack/react-router";
 import { getVehicle } from "@/lib/market";
-import { corsPreflightResponse, jsonWithCors } from "@/lib/api/cors";
+import { apiError, corsPreflightResponse, jsonWithCors } from "@/lib/api/http";
 
 export const Route = createFileRoute("/api/vehicles/$id")({
   server: {
     handlers: {
       OPTIONS: async ({ request }) => {
-        const origin = request.headers.get("origin");
-        return corsPreflightResponse(origin);
+        return corsPreflightResponse(request.headers.get("origin"));
       },
 
       GET: async ({ request, params }) => {
@@ -22,12 +20,15 @@ export const Route = createFileRoute("/api/vehicles/$id")({
         try {
           const vehicle = await getVehicle({ data: { id } });
           if (!vehicle) {
-            return jsonWithCors({ error: "Vehículo no encontrado" }, { status: 404 }, origin);
+            return jsonWithCors(
+              { error: "Vehículo no encontrado" },
+              { status: 404 },
+              origin,
+            );
           }
           return jsonWithCors(vehicle, { status: 200 }, origin);
         } catch (err) {
-          const message = err instanceof Error ? err.message : "Error interno";
-          return jsonWithCors({ error: message }, { status: 500 }, origin);
+          return apiError(err, origin);
         }
       },
     },

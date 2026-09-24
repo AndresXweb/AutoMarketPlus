@@ -19,6 +19,8 @@ import { Route as MisAnunciosRouteImport } from './routes/mis-anuncios'
 import { Route as OfertasRouteImport } from './routes/ofertas'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PublicarRouteImport } from './routes/publicar'
+import { Route as RecuperarRouteImport } from './routes/recuperar'
+import { Route as RestablecerRouteImport } from './routes/restablecer'
 import { Route as TerminosRouteImport } from './routes/terminos'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAnunciosRouteImport } from './routes/admin/anuncios'
@@ -79,6 +81,16 @@ const PublicarRoute = PublicarRouteImport.update({
   path: '/publicar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecuperarRoute = RecuperarRouteImport.update({
+  id: '/recuperar',
+  path: '/recuperar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RestablecerRoute = RestablecerRouteImport.update({
+  id: '/restablecer',
+  path: '/restablecer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TerminosRoute = TerminosRouteImport.update({
   id: '/terminos',
   path: '/terminos',
@@ -136,6 +148,8 @@ export interface FileRoutesByFullPath {
   '/ofertas': typeof OfertasRoute
   '/perfil': typeof PerfilRoute
   '/publicar': typeof PublicarRoute
+  '/recuperar': typeof RecuperarRoute
+  '/restablecer': typeof RestablecerRoute
   '/terminos': typeof TerminosRoute
   '/admin/anuncios': typeof AdminAnunciosRoute
   '/admin/contactos': typeof AdminContactosRoute
@@ -156,6 +170,8 @@ export interface FileRoutesByTo {
   '/ofertas': typeof OfertasRoute
   '/perfil': typeof PerfilRoute
   '/publicar': typeof PublicarRoute
+  '/recuperar': typeof RecuperarRoute
+  '/restablecer': typeof RestablecerRoute
   '/terminos': typeof TerminosRoute
   '/admin/anuncios': typeof AdminAnunciosRoute
   '/admin/contactos': typeof AdminContactosRoute
@@ -178,6 +194,8 @@ export interface FileRoutesById {
   '/ofertas': typeof OfertasRoute
   '/perfil': typeof PerfilRoute
   '/publicar': typeof PublicarRoute
+  '/recuperar': typeof RecuperarRoute
+  '/restablecer': typeof RestablecerRoute
   '/terminos': typeof TerminosRoute
   '/admin/anuncios': typeof AdminAnunciosRoute
   '/admin/contactos': typeof AdminContactosRoute
@@ -201,6 +219,8 @@ export interface FileRouteTypes {
     | '/ofertas'
     | '/perfil'
     | '/publicar'
+    | '/recuperar'
+    | '/restablecer'
     | '/terminos'
     | '/admin/anuncios'
     | '/admin/contactos'
@@ -221,6 +241,8 @@ export interface FileRouteTypes {
     | '/ofertas'
     | '/perfil'
     | '/publicar'
+    | '/recuperar'
+    | '/restablecer'
     | '/terminos'
     | '/admin/anuncios'
     | '/admin/contactos'
@@ -242,6 +264,8 @@ export interface FileRouteTypes {
     | '/ofertas'
     | '/perfil'
     | '/publicar'
+    | '/recuperar'
+    | '/restablecer'
     | '/terminos'
     | '/admin/anuncios'
     | '/admin/contactos'
@@ -264,6 +288,8 @@ export interface RootRouteChildren {
   OfertasRoute: typeof OfertasRoute
   PerfilRoute: typeof PerfilRoute
   PublicarRoute: typeof PublicarRoute
+  RecuperarRoute: typeof RecuperarRoute
+  RestablecerRoute: typeof RestablecerRoute
   TerminosRoute: typeof TerminosRoute
   VehiculoIdRoute: typeof VehiculoIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -339,6 +365,20 @@ declare module '@tanstack/react-router' {
       path: '/publicar'
       fullPath: '/publicar'
       preLoaderRoute: typeof PublicarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recuperar': {
+      id: '/recuperar'
+      path: '/recuperar'
+      fullPath: '/recuperar'
+      preLoaderRoute: typeof RecuperarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/restablecer': {
+      id: '/restablecer'
+      path: '/restablecer'
+      fullPath: '/restablecer'
+      preLoaderRoute: typeof RestablecerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terminos': {
@@ -438,6 +478,8 @@ const rootRouteChildren: RootRouteChildren = {
   OfertasRoute: OfertasRoute,
   PerfilRoute: PerfilRoute,
   PublicarRoute: PublicarRoute,
+  RecuperarRoute: RecuperarRoute,
+  RestablecerRoute: RestablecerRoute,
   TerminosRoute: TerminosRoute,
   VehiculoIdRoute: VehiculoIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

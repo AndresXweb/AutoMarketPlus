@@ -197,6 +197,7 @@ export const auth = betterAuth({
       trustedProviders: [
         ...GROK_PROVIDERS.map((p) => p.providerId),
         GATE_PROVIDER_ID,
+        "google",
       ],
       // X's synthetic email is never "verified", so don't gate linking on the
       // local user's email-verified state.
@@ -210,8 +211,65 @@ export const auth = betterAuth({
   // flicker-prevention guidance (gate on `isPending`; SSR the session).
   session: { cookieCache: { enabled: true, maxAge: 300 } },
 
-  // Local email/password — toggled only via `./email-password` (not a plugin).
-  ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
+  // Local email/password + verificación y recuperación (SMTP vía mail.ts).
+  ...(emailAndPasswordEnabled
+    ? {
+        emailAndPassword: {
+          enabled: true,
+          requireEmailVerification: true,
+          sendResetPassword: async ({ user, url }) => {
+            const { sendAppMail } = await import("./mail");
+            console.log("[auth] sendResetPassword para", user.email);
+            try {
+              await sendAppMail({
+                to: user.email,
+                subject: "AutoMarket — Restablecer contraseña",
+                text:
+                  `Hola${user.name ? ` ${user.name}` : ""},\n\n` +
+                  `Pediste restablecer tu contraseña en AutoMarket.\n\n` +
+                  `Abre este enlace (válido por un tiempo limitado):\n${url}\n\n` +
+                  `Si no fuiste tú, ignora este correo.\n`,
+              });
+            } catch (err) {
+              console.error("[auth] Falló envío de reset:", err);
+              throw err;
+            }
+          },
+        },
+        emailVerification: {
+          sendOnSignUp: true,
+          autoSignInAfterVerification: true,
+          sendVerificationEmail: async ({ user, url }) => {
+            const { sendAppMail } = await import("./mail");
+            await sendAppMail({
+              to: user.email,
+              subject: "AutoMarket — Confirma tu correo",
+              text:
+                `Hola${user.name ? ` ${user.name}` : ""},\n\n` +
+                `Confirma tu correo para publicar y ofertar en AutoMarket:\n\n` +
+                `${url}\n\n` +
+                `Si no creaste esta cuenta, ignora este mensaje.\n`,
+            });
+          },
+        },
+      }
+    : {}),
+
+  // Google directo (idToken desde el front). Requiere GOOGLE_CLIENT_ID y
+  // GOOGLE_CLIENT_SECRET en el servidor (consola Google Cloud → OAuth Web).
+  ...((() => {
+    const googleId = env("GOOGLE_CLIENT_ID") ?? env("VITE_GOOGLE_CLIENT_ID");
+    const googleSecret = env("GOOGLE_CLIENT_SECRET");
+    if (!googleId || !googleSecret) return {};
+    return {
+      socialProviders: {
+        google: {
+          clientId: googleId,
+          clientSecret: googleSecret,
+        },
+      },
+    };
+  })()),
 
   // `__Host-` prefixed cookies: the browser REFUSES any same-named cookie that
   // carries a `Domain` attribute, so a sibling `*.grok.me` app cannot "toss" a

@@ -29,6 +29,15 @@ export function compressImageFile(file: File, maxWidth = 1400, quality = 0.72): 
   });
 }
 
+/** Compresión más agresiva para fotos de cédula (data URL más liviana). */
+export function compressIdImage(file: File): Promise<string> {
+  return compressImageFile(file, 1000, 0.55);
+}
+
+export function isValidDataImage(url: string, minLen = 500): boolean {
+  return typeof url === "string" && url.startsWith("data:image/") && url.length >= minLen;
+}
+
 export function parseImageList(raw: string | null | undefined, fallback?: string): string[] {
   if (raw) {
     try {

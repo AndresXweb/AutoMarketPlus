@@ -29,6 +29,8 @@ function AdminHome() {
     { label: "Contactos", value: data.contacts },
     { label: "Anuncios en revisión", value: data.pendingListings },
     { label: "Verificaciones", value: data.pendingVerifications },
+    { label: "Negocios del mes", value: (data as { dealsThisMonth?: number }).dealsThisMonth ?? 0 },
+    { label: "Solicitudes reactivación", value: (data as { reactivationRequests?: number }).reactivationRequests ?? 0 },
   ];
 
   const pie = data.byType.map((r) => ({
@@ -100,6 +102,58 @@ function AdminHome() {
           </div>
         </div>
       </div>
+      {(data as { recentDeals?: Array<{
+        id: number;
+        vehicleTitle: string | null;
+        sellerName: string | null;
+        buyerName: string | null;
+        finalAmount: number | null;
+        acceptedAt: string;
+        offerType: string;
+      }> }).recentDeals &&
+        (data as { recentDeals: Array<{
+          id: number;
+          vehicleTitle: string | null;
+          sellerName: string | null;
+          buyerName: string | null;
+          finalAmount: number | null;
+          acceptedAt: string;
+          offerType: string;
+        }> }).recentDeals.length > 0 && (
+        <div className="mt-8 rounded-xl bg-surface p-5 shadow-[var(--shadow-border)]">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg font-semibold">Últimos negocios concretados</h2>
+            <Link to="/admin/ofertas" className="text-sm text-accent">
+              Ver todos
+            </Link>
+          </div>
+          <ul className="mt-4 grid gap-3">
+            {(data as { recentDeals: Array<{
+              id: number;
+              vehicleTitle: string | null;
+              sellerName: string | null;
+              buyerName: string | null;
+              finalAmount: number | null;
+              acceptedAt: string;
+              offerType: string;
+            }> }).recentDeals.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span>
+                  {d.vehicleTitle ?? "Vehículo"} · {d.sellerName ?? "Vendedor"} → {d.buyerName ?? "Comprador"}
+                  {d.finalAmount != null ? ` · ${formatCop(d.finalAmount)}` : ""}
+                </span>
+                <span className="text-xs text-muted tabular-nums">
+                  {new Date(d.acceptedAt).toLocaleString("es-CO", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-8 rounded-xl bg-surface p-5 shadow-[var(--shadow-border)]">
         <h2 className="font-display text-lg font-semibold">Ofertas recientes</h2>
         <ul className="mt-4 grid gap-3">

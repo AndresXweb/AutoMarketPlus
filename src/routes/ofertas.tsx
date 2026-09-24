@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { OFFER_TYPE_LABEL, STATUS_LABEL, formatCop } from "@/lib/format";
+import { OFFER_TYPE_LABEL, STATUS_LABEL, formatCop, mailtoHref, whatsappHref } from "@/lib/format";
 import {
   counterOffer,
   listMyOffers,
@@ -50,7 +50,7 @@ function OfferCard({
     setBusy(true);
     try {
       await respondOffer({ data: { id: offer.id, status } });
-      toast.success(status === "aceptada" ? "Oferta aceptada. El anuncio pasó a vendido." : "Oferta rechazada.");
+      toast.success(status === "aceptada" ? "Oferta aceptada. Ya puedes contactar a la otra parte aquí." : "Oferta rechazada.");
       onDone();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo actualizar.");
@@ -104,16 +104,90 @@ function OfferCard({
               : "Permuta"}
         </p>
         {offer.message && <p className="mt-2 text-sm leading-relaxed text-muted">{offer.message}</p>}
-        {offer.events && offer.events.length > 1 && (
+        {offer.events && offer.events.length > 0 && (
           <ol className="mt-3 grid gap-1 border-l border-border pl-3 text-xs text-subtle">
             {offer.events.map((ev) => (
               <li key={ev.id}>
+                <span className="text-muted">
+                  {new Date(ev.createdAt).toLocaleString("es-CO", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                </span>
+                {" · "}
                 {ev.actorName ?? "Usuario"} · {STATUS_LABEL[ev.action] ?? ev.action}
                 {ev.amount != null ? ` · ${formatCop(ev.amount)}` : ""}
                 {ev.message ? ` — ${ev.message}` : ""}
               </li>
             ))}
           </ol>
+        )}
+        {offer.status === "aceptada" && (
+          <div className="mt-4 rounded-lg border border-accent/30 bg-elevated/40 p-3">
+            <p className="text-sm font-medium text-accent">Negocio concretado</p>
+            {offer.acceptedAt && (
+              <p className="mt-1 text-xs text-muted">
+                {new Date(offer.acceptedAt).toLocaleString("es-CO", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+                {offer.finalAmount != null ? ` · ${formatCop(offer.finalAmount)}` : ""}
+              </p>
+            )}
+            <p className="mt-2 text-sm">
+              Contacto de {offer.counterpartName ?? "la otra parte"}:
+            </p>
+            <ul className="mt-1 space-y-0.5 text-sm text-muted">
+              {offer.counterpartWhatsapp && <li>WhatsApp: {offer.counterpartWhatsapp}</li>}
+              {offer.counterpartPhone && !offer.counterpartWhatsapp && (
+                <li>Teléfono: {offer.counterpartPhone}</li>
+              )}
+              {offer.counterpartPhone &&
+                offer.counterpartWhatsapp &&
+                offer.counterpartPhone !== offer.counterpartWhatsapp && (
+                  <li>Teléfono: {offer.counterpartPhone}</li>
+                )}
+              {offer.counterpartEmail && <li>Correo: {offer.counterpartEmail}</li>}
+              {!offer.counterpartWhatsapp && !offer.counterpartPhone && !offer.counterpartEmail && (
+                <li className="text-subtle">
+                  La otra parte no registró teléfono ni correo en su perfil.
+                </li>
+              )}
+            </ul>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {offer.counterpartWhatsapp && (
+                <a
+                  href={whatsappHref(
+                    offer.counterpartWhatsapp,
+                    `Hola ${offer.counterpartName ?? ""}, soy de AutoMarket. Quedamos en el trato por ${offer.vehicleTitle ?? "el vehículo"}. ¿Coordinamos el cierre?`,
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button type="button" size="sm" variant="secondary">
+                    WhatsApp
+                  </Button>
+                </a>
+              )}
+              {offer.counterpartEmail && (
+                <a
+                  href={mailtoHref(
+                    offer.counterpartEmail,
+                    `AutoMarket — ${offer.vehicleTitle ?? "Negocio"}`,
+                    `Hola ${offer.counterpartName ?? ""},
+
+Quedamos en el trato por ${offer.vehicleTitle ?? "el vehículo"} en AutoMarket.
+¿Coordinamos el cierre?
+`,
+                  )}
+                >
+                  <Button type="button" size="sm" variant="outline">
+                    Correo
+                  </Button>
+                </a>
+              )}
+            </div>
+          </div>
         )}
         {myTurn && (
           <div className="mt-3 flex flex-wrap gap-2">

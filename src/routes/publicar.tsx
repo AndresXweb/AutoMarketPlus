@@ -23,6 +23,10 @@ function Publicar() {
   const [taxesCurrent, setTaxesCurrent] = useState(true);
   const [finesCurrent, setFinesCurrent] = useState(true);
   const [swapAny, setSwapAny] = useState(true);
+  const [showWhatsapp, setShowWhatsapp] = useState(true);
+  const [acceptLowerOffers, setAcceptLowerOffers] = useState(true);
+  const [customMinPercent, setCustomMinPercent] = useState(false);
+  const [minOfferPercent, setMinOfferPercent] = useState("70");
   const [verified, setVerified] = useState<boolean | null>(null);
   const [disabled, setDisabled] = useState(false);
 
@@ -130,6 +134,12 @@ function Publicar() {
           finesDetail: String(fd.get("finesDetail") || "") || undefined,
           finesAmount: fd.get("finesAmount") ? Number(fd.get("finesAmount")) : undefined,
           swapPrefs: listingType === "venta" ? { any: true } : swapPrefs,
+          showWhatsapp,
+          acceptLowerOffers: listingType === "permuta" ? true : acceptLowerOffers,
+          minOfferPercent:
+            listingType !== "permuta" && acceptLowerOffers && customMinPercent
+              ? Number(minOfferPercent)
+              : null,
         },
       });
       toast.success(
@@ -345,6 +355,70 @@ function Publicar() {
               </div>
             )}
           </div>
+
+          {(listingType === "venta" || listingType === "ambos") && (
+            <div className="rounded-xl border border-border bg-surface/60 p-4 space-y-3">
+              <p className="text-sm font-medium">Reglas de ofertas de compra</p>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={acceptLowerOffers}
+                  onChange={(e) => setAcceptLowerOffers(e.target.checked)}
+                />
+                <span>
+                  Acepto ofertas <strong>menores</strong> al precio publicado.
+                  <span className="block text-xs text-muted">
+                    Si no marcas esto, solo se podrá ofertar el precio exacto. Nadie puede ofertar más del precio.
+                  </span>
+                </span>
+              </label>
+              {acceptLowerOffers && (
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={customMinPercent}
+                    onChange={(e) => setCustomMinPercent(e.target.checked)}
+                  />
+                  <span className="flex-1">
+                    Definir un porcentaje mínimo
+                    {customMinPercent && (
+                      <span className="mt-2 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={minOfferPercent}
+                          onChange={(e) => setMinOfferPercent(e.target.value)}
+                          className="w-20 rounded-md border border-border bg-bg px-2 py-1 text-sm"
+                        />
+                        <span className="text-xs text-muted">% del precio (ej. 70 = mínimo 70%)</span>
+                      </span>
+                    )}
+                    {!customMinPercent && (
+                      <span className="block text-xs text-muted">Sin mínimo: aceptas cualquier oferta ≤ precio.</span>
+                    )}
+                  </span>
+                </label>
+              )}
+            </div>
+          )}
+
+          <label className="flex items-start gap-2 text-sm rounded-xl border border-border bg-surface/60 p-4">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={showWhatsapp}
+              onChange={(e) => setShowWhatsapp(e.target.checked)}
+            />
+            <span>
+              Mostrar mi WhatsApp en el anuncio
+              <span className="block text-xs text-muted">
+                Si lo desactivas, los interesados solo verán el correo (si lo tienes) o deberán ofertar.
+              </span>
+            </span>
+          </label>
 
           {listingType !== "venta" && (
             <div className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">

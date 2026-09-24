@@ -10,7 +10,7 @@ import { RedirectToSignIn } from "@/lib/auth/gates";
 import { authClient } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { CITIES, DOC_TYPES, STATUS_LABEL } from "@/lib/format";
-import { compressImageFile } from "@/lib/images";
+import { compressIdImage, isValidDataImage } from "@/lib/images";
 import { getMyProfile, submitVerification, updateMyProfile, type Profile } from "@/lib/market";
 
 export const Route = createFileRoute("/perfil")({ component: Perfil });
@@ -23,14 +23,22 @@ function Perfil() {
   const [front, setFront] = useState<string>("");
   const [back, setBack] = useState<string>("");
   const [verBusy, setVerBusy] = useState(false);
+  const [showCompletar, setShowCompletar] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setShowCompletar(new URLSearchParams(window.location.search).get("completar") === "1");
+    }
+  }, []);
 
   useEffect(() => {
     if (isPending || !user) return;
     getMyProfile()
       .then((p) => {
         setProfile(p);
-        setFront(p?.idFrontUrl ?? "");
-        setBack(p?.idBackUrl ?? "");
+        // Solo precargar si el perfil ya tenía fotos; no borrar selección local
+        if (p?.idFrontUrl) setFront(p.idFrontUrl);
+        if (p?.idBackUrl) setBack(p.idBackUrl);
       })
       .catch(() => setProfile(null));
   }, [user, isPending]);
@@ -98,10 +106,19 @@ function Perfil() {
 
   async function pickSide(side: "front" | "back", file: File | undefined) {
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("El archivo debe ser una imagen (JPG o PNG).");
+      return;
+    }
     try {
-      const url = await compressImageFile(file, 1200, 0.7);
+      const url = await compressIdImage(file);
+      if (!isValidDataImage(url)) {
+        toast.error("No se pudo procesar la imagen. Prueba con otra foto más liviana.");
+        return;
+      }
       if (side === "front") setFront(url);
       else setBack(url);
+      toast.success(side === "front" ? "Frente listo." : "Reverso listo.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo leer la foto.");
     }
@@ -112,6 +129,10 @@ function Perfil() {
     const fd = new FormData(e.currentTarget);
     if (!front || !back) {
       toast.error("Sube el frente y el reverso de tu cédula.");
+      return;
+    }
+    if (!isValidDataImage(front) || !isValidDataImage(back)) {
+      toast.error("Las fotos no son válidas. Vuelve a elegir frente y reverso (JPG o PNG legibles).");
       return;
     }
     setVerBusy(true);
@@ -138,6 +159,12 @@ function Perfil() {
   return (
     <SiteShell>
       <main className="mx-auto max-w-lg px-4 py-10">
+        {showCompletar && (
+            <div className="mb-6 rounded-xl border border-accent/40 bg-surface px-4 py-3 text-sm text-muted">
+              Completa tu teléfono y datos de contacto. Con Google el correo ya queda verificado;
+              el resto del perfil lo llenas aquí una sola vez.
+            </div>
+          )}
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-subtle">Cuenta</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <h1 className="font-display text-4xl font-semibold">Perfil</h1>

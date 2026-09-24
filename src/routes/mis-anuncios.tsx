@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { LISTING_LABEL, STATUS_LABEL, formatCop } from "@/lib/format";
-import { deleteMyVehicle, listMyVehicles, updateVehicleStatus, type Vehicle } from "@/lib/market";
+import { deleteMyVehicle, listMyVehicles, requestReactivation, updateVehicleStatus, type Vehicle } from "@/lib/market";
 
 export const Route = createFileRoute("/mis-anuncios")({ component: MisAnuncios });
 
@@ -84,11 +84,45 @@ function MisAnuncios() {
                       En revisión. Si verificas tu cuenta, los siguientes anuncios salen de inmediato.
                     </p>
                   )}
+                  {v.status === "pausado" && v.pausedReason === "inactividad" && (
+                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                      Pausado por inactividad (30 días sin movimiento).
+                      {(v.freeReactivationsUsed ?? 0) < 1
+                        ? " Puedes reactivar gratis una vez más (+30 días)."
+                        : v.reactivationRequestedAt
+                          ? " Ya solicitaste reactivación; un admin la revisará."
+                          : " Debes solicitar reactivación al administrador."}
+                    </p>
+                  )}
+                  {v.status === "activo" && typeof v.activeOffersCount === "number" && v.activeOffersCount > 0 && (
+                    <p className="mt-2 text-xs text-accent">
+                      {v.activeOffersCount} oferta{v.activeOffersCount === 1 ? "" : "s"} activa{v.activeOffersCount === 1 ? "" : "s"}
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {v.status === "pausado" && (
-                    <Button size="sm" variant="secondary" onClick={() => void updateVehicleStatus({ data: { id: v.id, status: "activo" } }).then(reload)}>
-                      Activar
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        void updateVehicleStatus({ data: { id: v.id, status: "activo" } })
+                          .then((res: { ok?: boolean; requested?: boolean; free?: boolean; message?: string }) => {
+                            if (res?.requested) {
+                              toast.message(res.message ?? "Solicitud enviada al administrador.");
+                            } else if (res?.free) {
+                              toast.success("Anuncio reactivado por 30 días más.");
+                            } else {
+                              toast.success("Anuncio activado.");
+                            }
+                            return reload();
+                          })
+                          .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo activar."));
+                      }}
+                    >
+                      {(v.pausedReason === "inactividad" && (v.freeReactivationsUsed ?? 0) >= 1)
+                        ? "Solicitar reactivación"
+                        : "Activar"}
                     </Button>
                   )}
                   {v.status === "activo" && (

@@ -132,6 +132,32 @@ function Detalle() {
       setNeedAuth(true);
       return;
     }
+    if (offerType === "compra") {
+      const n = Number(amount);
+      if (!amount || Number.isNaN(n) || n <= 0) {
+        toast.error("Indica un monto válido.");
+        return;
+      }
+      if (n > vehicle.price) {
+        toast.error("La oferta no puede ser mayor al precio publicado.");
+        return;
+      }
+      if (vehicle.acceptLowerOffers === false && n < vehicle.price) {
+        toast.error("El vendedor solo acepta el precio publicado.");
+        return;
+      }
+      if (
+        vehicle.acceptLowerOffers !== false &&
+        vehicle.minOfferPercent != null &&
+        vehicle.minOfferPercent > 0
+      ) {
+        const floor = Math.ceil((vehicle.price * vehicle.minOfferPercent) / 100);
+        if (n < floor) {
+          toast.error(`La oferta mínima es ${floor.toLocaleString("es-CO")} COP.`);
+          return;
+        }
+      }
+    }
     setBusy(true);
     try {
       await createOffer({
@@ -221,6 +247,11 @@ function Detalle() {
                   {vehicle.status !== "activo" && (
                     <Badge tone="warn">{vehicle.status === "pendiente_revision" ? "En revisión" : vehicle.status}</Badge>
                   )}
+                  {own && typeof vehicle.activeOffersCount === "number" && vehicle.activeOffersCount > 0 && (
+                    <Badge tone="accent">
+                      {vehicle.activeOffersCount} oferta{vehicle.activeOffersCount === 1 ? "" : "s"}
+                    </Badge>
+                  )}
                 </div>
                 <h1 className="mt-3 font-display text-3xl font-semibold">{vehicle.title}</h1>
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
@@ -289,11 +320,20 @@ function Detalle() {
                     <Input
                       type="number"
                       min={0}
+                      max={vehicle.price}
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       required
-                      placeholder="65000000"
+                      placeholder={String(vehicle.price)}
                     />
+                    <p className="mt-1 text-xs text-muted">
+                      Máximo {vehicle.price.toLocaleString("es-CO")} COP (precio publicado).
+                      {vehicle.acceptLowerOffers === false
+                        ? " El vendedor solo acepta el precio exacto."
+                        : vehicle.minOfferPercent
+                          ? ` Oferta mínima: ${vehicle.minOfferPercent}% del precio.`
+                          : " Se aceptan ofertas menores."}
+                    </p>
                   </Field>
                 )}
                 {offerType === "permuta" && (

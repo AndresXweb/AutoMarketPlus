@@ -31,6 +31,7 @@ import { Route as AdminVerificacionesRouteImport } from './routes/admin/verifica
 import { Route as ApiVehiclesRouteImport } from './routes/api/vehicles'
 import { Route as VehiculoIdRouteImport } from './routes/vehiculo.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiVehiclesIdRouteImport } from './routes/api/vehicles.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -142,6 +143,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiVehiclesIdRoute = ApiVehiclesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiVehiclesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -162,10 +168,11 @@ export interface FileRoutesByFullPath {
   '/admin/ofertas': typeof AdminOfertasRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/verificaciones': typeof AdminVerificacionesRoute
-  '/api/vehicles': typeof ApiVehiclesRoute
+  '/api/vehicles': typeof ApiVehiclesRouteWithChildren
   '/vehiculo/$id': typeof VehiculoIdRoute
   '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/vehicles/$id': typeof ApiVehiclesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -185,10 +192,11 @@ export interface FileRoutesByTo {
   '/admin/ofertas': typeof AdminOfertasRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/verificaciones': typeof AdminVerificacionesRoute
-  '/api/vehicles': typeof ApiVehiclesRoute
+  '/api/vehicles': typeof ApiVehiclesRouteWithChildren
   '/vehiculo/$id': typeof VehiculoIdRoute
   '/admin': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/vehicles/$id': typeof ApiVehiclesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -210,10 +218,11 @@ export interface FileRoutesById {
   '/admin/ofertas': typeof AdminOfertasRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/verificaciones': typeof AdminVerificacionesRoute
-  '/api/vehicles': typeof ApiVehiclesRoute
+  '/api/vehicles': typeof ApiVehiclesRouteWithChildren
   '/vehiculo/$id': typeof VehiculoIdRoute
   '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/vehicles/$id': typeof ApiVehiclesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -240,6 +249,7 @@ export interface FileRouteTypes {
     | '/vehiculo/$id'
     | '/admin/'
     | '/api/auth/$'
+    | '/api/vehicles/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/vehiculo/$id'
     | '/admin'
     | '/api/auth/$'
+    | '/api/vehicles/$id'
   id:
     | '__root__'
     | '/'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/vehiculo/$id'
     | '/admin/'
     | '/api/auth/$'
+    | '/api/vehicles/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -303,7 +315,7 @@ export interface RootRouteChildren {
   RecuperarRoute: typeof RecuperarRoute
   RestablecerRoute: typeof RestablecerRoute
   TerminosRoute: typeof TerminosRoute
-  ApiVehiclesRoute: typeof ApiVehiclesRoute
+  ApiVehiclesRoute: typeof ApiVehiclesRouteWithChildren
   VehiculoIdRoute: typeof VehiculoIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -464,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/vehicles/$id': {
+      id: '/api/vehicles/$id'
+      path: '/$id'
+      fullPath: '/api/vehicles/$id'
+      preLoaderRoute: typeof ApiVehiclesIdRouteImport
+      parentRoute: typeof ApiVehiclesRoute
+    }
   }
 }
 
@@ -487,6 +506,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface ApiVehiclesRouteChildren {
+  ApiVehiclesIdRoute: typeof ApiVehiclesIdRoute
+}
+
+const ApiVehiclesRouteChildren: ApiVehiclesRouteChildren = {
+  ApiVehiclesIdRoute: ApiVehiclesIdRoute,
+}
+
+const ApiVehiclesRouteWithChildren = ApiVehiclesRoute._addFileChildren(
+  ApiVehiclesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -501,7 +532,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecuperarRoute: RecuperarRoute,
   RestablecerRoute: RestablecerRoute,
   TerminosRoute: TerminosRoute,
-  ApiVehiclesRoute: ApiVehiclesRoute,
+  ApiVehiclesRoute: ApiVehiclesRouteWithChildren,
   VehiculoIdRoute: VehiculoIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

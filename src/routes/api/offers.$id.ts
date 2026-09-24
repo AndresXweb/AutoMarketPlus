@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { requireApiUserId } from "@/lib/auth/api-auth";
-import { svcCounterOffer, svcRespondOffer } from "@/lib/api/service";
+import { counterOffer, respondOffer } from "@/lib/market";
 import {
   apiError,
   corsPreflightResponse,
@@ -11,65 +10,54 @@ import {
 export const Route = createFileRoute("/api/offers/$id")({
   server: {
     handlers: {
-      OPTIONS: async ({ request }) => {
-        return corsPreflightResponse(request.headers.get("origin"));
-      },
+      OPTIONS: async ({ request }) =>
+        corsPreflightResponse(request.headers.get("origin")),
 
-      /**
-       * Responder o contraofertar.
-       * Body:
-       *   { "action": "aceptada" | "rechazada" }
-       *   { "action": "contraoferta", "amount"?: number, "swapVehicleId"?: number, "message": string }
-       */
       POST: async ({ request, params }) => {
         const origin = request.headers.get("origin");
-        const id = Number(params.id);
-        if (!Number.isFinite(id) || id <= 0) {
-          return jsonWithCors({ error: "ID inválido" }, { status: 400 }, origin);
-        }
-
         try {
-          const userId = await requireApiUserId(request);
-          const body = await readJson<{
-            action: string;
-            amount?: number;
-            swapVehicleId?: number;
-            message?: string;
-          }>(request);
-
-          if (body.action === "aceptada" || body.action === "rechazada") {
-            const result = await svcRespondOffer(
-              userId,
-              id,
-              body.action as "aceptada" | "rechazada",
-            );
-            return jsonWithCors(result, { status: 200 }, origin);
+          const id = Number(params.id);
+          if (!Number.isFinite(id) || id <= 0) {
+            return jsonWithCors({ error: "ID inválido" }, { status: 400 }, origin);
           }
 
-          if (body.action === "contraoferta") {
-            if (!body.message || body.message.length < 2) {
-              return jsonWithCors(
-                { error: "message requerido (mín. 2 caracteres)" },
-                { status: 400 },
-                origin,
-              );
-            }
-            const result = await svcCounterOffer(userId, {
-              id,
-              amount: body.amount != null ? Number(body.amount) : undefined,
-              swapVehicleId:
-                body.swapVehicleId != null
-                  ? Number(body.swapVehicleId)
-                  : undefined,
-              message: body.message,
+          const body = await readJson<{
+            action?: string;
+            status?: string;
+            message?: string;
+            amount?: number;
+            swapVehicleId?: number;
+          }>(request);
+
+          const action = (body.action ?? body.status ?? "").toLowerCase();
+
+          if (action === "aceptada" || action === "aceptar") {
+            await respondOffer({ data: { id, status: "aceptada" } });
+            return jsonWithCors({ ok: true }, { status: 200 }, origin);
+          }
+          if (action === "rechazada" || action === "rechazar") {
+            await respondOffer({ data: { id, status: "rechazada" } });
+            return jsonWithCors({ ok: true }, { status: 200 }, origin);
+          }
+          if (action === "contraoferta" || action === "counter" || body.message) {
+            await counterOffer({
+              data: {
+                id,
+                amount: body.amount != null ? Number(body.amount) : undefined,
+                swapVehicleId:
+                  body.swapVehicleId != null
+                    ? Number(body.swapVehicleId)
+                    : undefined,
+                message: String(body.message ?? "Contraoferta"),
+              },
             });
-            return jsonWithCors(result, { status: 200 }, origin);
+            return jsonWithCors({ ok: true }, { status: 200 }, origin);
           }
 
           return jsonWithCors(
             {
               error:
-                'action debe ser "aceptada", "rechazada" o "contraoferta"',
+                "action debe ser aceptada | rechazada | contraoferta (o status)",
             },
             { status: 400 },
             origin,

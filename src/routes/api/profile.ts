@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { requireApiUserId } from "@/lib/auth/api-auth";
 import {
-  svcGetProfile,
-  svcSubmitVerification,
-  svcUpdateProfile,
-} from "@/lib/api/service";
+  getMyProfile,
+  updateMyProfile,
+  submitVerification,
+} from "@/lib/market";
 import {
   apiError,
   corsPreflightResponse,
@@ -15,15 +14,13 @@ import {
 export const Route = createFileRoute("/api/profile")({
   server: {
     handlers: {
-      OPTIONS: async ({ request }) => {
-        return corsPreflightResponse(request.headers.get("origin"));
-      },
+      OPTIONS: async ({ request }) =>
+        corsPreflightResponse(request.headers.get("origin")),
 
       GET: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const userId = await requireApiUserId(request);
-          const profile = await svcGetProfile(userId);
+          const profile = await getMyProfile();
           if (!profile) {
             return jsonWithCors(
               { error: "Perfil no encontrado" },
@@ -40,64 +37,32 @@ export const Route = createFileRoute("/api/profile")({
       PATCH: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const userId = await requireApiUserId(request);
-          const body = await readJson<{
-            firstName: string;
-            lastName: string;
-            phone: string;
-            whatsapp?: string;
-            city: string;
-            address?: string;
-            email?: string;
-            documentType?: string;
-            documentNumber?: string;
-          }>(request);
-
-          if (!body.firstName || !body.lastName || !body.phone || !body.city) {
-            return jsonWithCors(
-              { error: "Faltan campos: firstName, lastName, phone, city" },
-              { status: 400 },
-              origin,
-            );
-          }
-
-          const result = await svcUpdateProfile(userId, body);
-          return jsonWithCors(result, { status: 200 }, origin);
+          const body = await readJson(request);
+          await updateMyProfile({ data: body as never });
+          return jsonWithCors({ ok: true }, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
         }
       },
 
-      /** Subir cédula (verificación) */
       POST: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const userId = await requireApiUserId(request);
-          const body = await readJson<{
-            idFrontUrl: string;
-            idBackUrl: string;
-            documentType: string;
-            documentNumber: string;
-          }>(request);
-
-          if (
-            !body.idFrontUrl ||
-            !body.idBackUrl ||
-            !body.documentType ||
-            !body.documentNumber
-          ) {
-            return jsonWithCors(
-              {
-                error:
-                  "Faltan: idFrontUrl, idBackUrl, documentType, documentNumber",
+          const body = await readJson<Record<string, unknown>>(request);
+          if (body.idFrontUrl && body.idBackUrl) {
+            await submitVerification({
+              data: {
+                idFrontUrl: String(body.idFrontUrl),
+                idBackUrl: String(body.idBackUrl),
+                documentType:
+                  (body.documentType as "CC" | "CE" | "NIT" | "PA") ?? "CC",
+                documentNumber: String(body.documentNumber ?? ""),
               },
-              { status: 400 },
-              origin,
-            );
+            });
+            return jsonWithCors({ ok: true }, { status: 200 }, origin);
           }
-
-          const result = await svcSubmitVerification(userId, body);
-          return jsonWithCors(result, { status: 200 }, origin);
+          await updateMyProfile({ data: body as never });
+          return jsonWithCors({ ok: true }, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
         }

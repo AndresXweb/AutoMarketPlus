@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { requireApiUserId } from "@/lib/auth/api-auth";
-import { svcListFavorites, svcToggleFavorite } from "@/lib/api/service";
+import { listFavorites, toggleFavorite } from "@/lib/market";
 import {
   apiError,
   corsPreflightResponse,
@@ -11,38 +10,32 @@ import {
 export const Route = createFileRoute("/api/favorites")({
   server: {
     handlers: {
-      OPTIONS: async ({ request }) => {
-        return corsPreflightResponse(request.headers.get("origin"));
-      },
+      OPTIONS: async ({ request }) =>
+        corsPreflightResponse(request.headers.get("origin")),
 
       GET: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const userId = await requireApiUserId(request);
-          const list = await svcListFavorites(userId);
+          const list = await listFavorites();
           return jsonWithCors(list, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
         }
       },
 
-      /** Toggle favorito: { "vehicleId": 123 } */
       POST: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const userId = await requireApiUserId(request);
-          const body = await readJson<{ vehicleId: number }>(request);
-          if (!body.vehicleId || !Number.isFinite(Number(body.vehicleId))) {
+          const body = await readJson<{ vehicleId?: number }>(request);
+          const vehicleId = Number(body.vehicleId);
+          if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
             return jsonWithCors(
-              { error: "vehicleId requerido" },
+              { error: "vehicleId inválido" },
               { status: 400 },
               origin,
             );
           }
-          const result = await svcToggleFavorite(
-            userId,
-            Number(body.vehicleId),
-          );
+          const result = await toggleFavorite({ data: { vehicleId } });
           return jsonWithCors(result, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);

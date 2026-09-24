@@ -102,6 +102,9 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://localhost:8080",
   "http://127.0.0.1:8080",
   "http://[::1]:8080",
+  // Flutter web puede usar puertos altos (5xxx–15xxx)
+  ...Array.from({ length: 11000 }, (_, i) => `http://localhost:${5000 + i}`),
+  ...Array.from({ length: 11000 }, (_, i) => `http://127.0.0.1:${5000 + i}`),
 ];
 const baseURL = explicitBaseURL ?? {
   // Include loopback hosts so dynamic baseURL resolves for local email/password

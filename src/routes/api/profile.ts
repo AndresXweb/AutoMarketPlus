@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireApiUserId } from "@/lib/auth/api-auth";
 import {
-  getMyProfile,
-  updateMyProfile,
-  submitVerification,
-} from "@/lib/market";
+  svcGetProfile,
+  svcSubmitVerification,
+  svcUpdateProfile,
+} from "@/lib/api/service";
 import {
   apiError,
   corsPreflightResponse,
@@ -20,7 +21,8 @@ export const Route = createFileRoute("/api/profile")({
       GET: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const profile = await getMyProfile();
+          const userId = await requireApiUserId(request);
+          const profile = await svcGetProfile(userId);
           if (!profile) {
             return jsonWithCors(
               { error: "Perfil no encontrado" },
@@ -37,9 +39,39 @@ export const Route = createFileRoute("/api/profile")({
       PATCH: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const body = await readJson(request);
-          await updateMyProfile({ data: body as never });
-          return jsonWithCors({ ok: true }, { status: 200 }, origin);
+          const userId = await requireApiUserId(request);
+          const body = await readJson<{
+            firstName?: string;
+            lastName?: string;
+            phone?: string;
+            whatsapp?: string;
+            city?: string;
+            address?: string;
+            email?: string;
+            documentType?: string;
+            documentNumber?: string;
+          }>(request);
+
+          if (!body.firstName || !body.lastName || !body.phone || !body.city) {
+            return jsonWithCors(
+              { error: "Faltan campos: firstName, lastName, phone, city" },
+              { status: 400 },
+              origin,
+            );
+          }
+
+          const result = await svcUpdateProfile(userId, {
+            firstName: body.firstName,
+            lastName: body.lastName,
+            phone: body.phone,
+            whatsapp: body.whatsapp,
+            city: body.city,
+            address: body.address,
+            email: body.email,
+            documentType: body.documentType,
+            documentNumber: body.documentNumber,
+          });
+          return jsonWithCors(result, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
         }
@@ -48,21 +80,37 @@ export const Route = createFileRoute("/api/profile")({
       POST: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const body = await readJson<Record<string, unknown>>(request);
-          if (body.idFrontUrl && body.idBackUrl) {
-            await submitVerification({
-              data: {
-                idFrontUrl: String(body.idFrontUrl),
-                idBackUrl: String(body.idBackUrl),
-                documentType:
-                  (body.documentType as "CC" | "CE" | "NIT" | "PA") ?? "CC",
-                documentNumber: String(body.documentNumber ?? ""),
+          const userId = await requireApiUserId(request);
+          const body = await readJson<{
+            idFrontUrl?: string;
+            idBackUrl?: string;
+            documentType?: string;
+            documentNumber?: string;
+          }>(request);
+
+          if (
+            !body.idFrontUrl ||
+            !body.idBackUrl ||
+            !body.documentType ||
+            !body.documentNumber
+          ) {
+            return jsonWithCors(
+              {
+                error:
+                  "Faltan: idFrontUrl, idBackUrl, documentType, documentNumber",
               },
-            });
-            return jsonWithCors({ ok: true }, { status: 200 }, origin);
+              { status: 400 },
+              origin,
+            );
           }
-          await updateMyProfile({ data: body as never });
-          return jsonWithCors({ ok: true }, { status: 200 }, origin);
+
+          const result = await svcSubmitVerification(userId, {
+            idFrontUrl: body.idFrontUrl,
+            idBackUrl: body.idBackUrl,
+            documentType: body.documentType,
+            documentNumber: body.documentNumber,
+          });
+          return jsonWithCors(result, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
         }

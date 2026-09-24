@@ -31,7 +31,8 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undef
 async function goAfterLogin() {
   try {
     const profile = await getMyProfile();
-    const incomplete = !profile?.phone || String(profile.phone).replace(/\D/g, "").length < 7;
+    const incomplete =
+      !profile?.phone || String(profile.phone).replace(/\D/g, "").length < 7;
     window.location.href = incomplete ? "/perfil?completar=1" : "/";
   } catch {
     window.location.href = "/perfil?completar=1";
@@ -47,9 +48,9 @@ function Login() {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [city, setCity] = useState(CITIES[0] ?? "Bogotá");
+  const [city, setCity] = useState<string>(CITIES[0] ?? "Bogotá");
   const [address, setAddress] = useState("");
-  const [documentType, setDocumentType] = useState<(typeof DOC_TYPES)[number]>("CC");
+  const [documentType, setDocumentType] = useState<string>(DOC_TYPES[0]?.value ?? "CC");
   const [documentNumber, setDocumentNumber] = useState("");
   const [aceptoTerminos, setAceptoTerminos] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -162,7 +163,9 @@ function Login() {
   return (
     <SiteShell>
       <main className="mx-auto max-w-md px-4 py-12">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-subtle">Cuenta</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-subtle">
+          Cuenta
+        </p>
         <h1 className="mt-2 font-display text-4xl font-semibold">
           {mode === "crear" ? "Crear cuenta" : "Entrar"}
         </h1>
@@ -211,7 +214,9 @@ function Login() {
               </label>
             )}
             <div id="google-btn-slot" className="flex justify-center" />
-            {!googleReady && <p className="text-center text-xs text-subtle">Cargando Google…</p>}
+            {!googleReady && (
+              <p className="text-center text-xs text-subtle">Cargando Google…</p>
+            )}
           </div>
         )}
 
@@ -228,7 +233,8 @@ function Login() {
               </Button>
             ))}
             <p className="text-xs text-subtle">
-              Para Google en localhost configura VITE_GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET.
+              Para Google en localhost configura VITE_GOOGLE_CLIENT_ID y
+              GOOGLE_CLIENT_SECRET.
             </p>
           </div>
         )}
@@ -264,10 +270,12 @@ function Login() {
                 <Field label="Tipo de documento">
                   <Select
                     value={documentType}
-                    onChange={(e) => setDocumentType(e.target.value as typeof documentType)}
+                    onChange={(e) => setDocumentType(e.target.value)}
                   >
                     {DOC_TYPES.map((d) => (
-                      <option key={d}>{d}</option>
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
                     ))}
                   </Select>
                 </Field>
@@ -300,7 +308,9 @@ function Login() {
               <Field label="Ciudad">
                 <Select value={city} onChange={(e) => setCity(e.target.value)}>
                   {CITIES.map((c) => (
-                    <option key={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </Select>
               </Field>
@@ -361,11 +371,6 @@ function Login() {
             {busy ? "Espera…" : mode === "crear" ? "Crear cuenta" : "Entrar"}
           </Button>
         </form>
-
-        <p className="mt-6 text-xs leading-relaxed text-subtle">
-          Debes confirmar el correo para publicar u ofertar. La verificación de cédula es
-          adicional y la revisa un administrador.
-        </p>
       </main>
     </SiteShell>
   );

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createVehicle, listMyVehicles } from "@/lib/market";
+import { requireApiUserId } from "@/lib/auth/api-auth";
+import { svcCreateVehicle, svcListMyVehicles } from "@/lib/api/service";
 import {
   apiError,
   corsPreflightResponse,
@@ -16,7 +17,8 @@ export const Route = createFileRoute("/api/my-vehicles")({
       GET: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const vehicles = await listMyVehicles();
+          const userId = await requireApiUserId(request);
+          const vehicles = await svcListMyVehicles(userId);
           return jsonWithCors(vehicles, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
@@ -26,6 +28,7 @@ export const Route = createFileRoute("/api/my-vehicles")({
       POST: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
+          const userId = await requireApiUserId(request);
           const body = await readJson<Record<string, unknown>>(request);
 
           const payload = {
@@ -64,7 +67,7 @@ export const Route = createFileRoute("/api/my-vehicles")({
             swapPrefs: body.swapPrefs as { any?: boolean } | undefined,
           };
 
-          const result = await createVehicle({ data: payload as never });
+          const result = await svcCreateVehicle(userId, payload);
           return jsonWithCors(result, { status: 201 }, origin);
         } catch (err) {
           return apiError(err, origin);
@@ -74,16 +77,14 @@ export const Route = createFileRoute("/api/my-vehicles")({
   },
 });
 
-function normalizeCondition(v: unknown): "nuevo" | "seminuevo" | "usado" {
+function normalizeCondition(v: unknown): string {
   const s = String(v ?? "usado").toLowerCase();
   if (s === "nuevo") return "nuevo";
   if (s === "seminuevo") return "seminuevo";
   return "usado";
 }
 
-function normalizeFuel(
-  v: unknown,
-): "gasolina" | "diesel" | "hibrido" | "electrico" {
+function normalizeFuel(v: unknown): string {
   const s = String(v ?? "gasolina")
     .toLowerCase()
     .normalize("NFD")
@@ -94,7 +95,7 @@ function normalizeFuel(
   return "gasolina";
 }
 
-function normalizeTransmission(v: unknown): "manual" | "automatica" {
+function normalizeTransmission(v: unknown): string {
   const s = String(v ?? "manual")
     .toLowerCase()
     .normalize("NFD")
@@ -103,9 +104,7 @@ function normalizeTransmission(v: unknown): "manual" | "automatica" {
   return "manual";
 }
 
-function normalizeBody(
-  v: unknown,
-): "sedan" | "suv" | "pickup" | "hatchback" | "van" | "coupe" {
+function normalizeBody(v: unknown): string {
   const s = String(v ?? "sedan")
     .toLowerCase()
     .normalize("NFD")
@@ -118,7 +117,7 @@ function normalizeBody(
   return "sedan";
 }
 
-function normalizeListing(v: unknown): "venta" | "permuta" | "ambos" {
+function normalizeListing(v: unknown): string {
   const s = String(v ?? "venta").toLowerCase();
   if (s === "permuta") return "permuta";
   if (s === "ambos") return "ambos";

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createOffer, listMyOffers } from "@/lib/market";
+import { requireApiUserId } from "@/lib/auth/api-auth";
+import { svcCreateOffer, svcListMyOffers } from "@/lib/api/service";
 import {
   apiError,
   corsPreflightResponse,
@@ -16,7 +17,8 @@ export const Route = createFileRoute("/api/offers")({
       GET: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const data = await listMyOffers();
+          const userId = await requireApiUserId(request);
+          const data = await svcListMyOffers(userId);
           return jsonWithCors(data, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
@@ -26,6 +28,7 @@ export const Route = createFileRoute("/api/offers")({
       POST: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
+          const userId = await requireApiUserId(request);
           const body = await readJson<{
             vehicleId?: number;
             offerType?: string;
@@ -46,17 +49,15 @@ export const Route = createFileRoute("/api/offers")({
           const offerType =
             body.offerType === "permuta" ? "permuta" : "compra";
 
-          const result = await createOffer({
-            data: {
-              vehicleId,
-              offerType,
-              amount: body.amount != null ? Number(body.amount) : undefined,
-              swapVehicleId:
-                body.swapVehicleId != null
-                  ? Number(body.swapVehicleId)
-                  : undefined,
-              message: body.message,
-            },
+          const result = await svcCreateOffer(userId, {
+            vehicleId,
+            offerType,
+            amount: body.amount != null ? Number(body.amount) : undefined,
+            swapVehicleId:
+              body.swapVehicleId != null
+                ? Number(body.swapVehicleId)
+                : undefined,
+            message: body.message,
           });
           return jsonWithCors(result ?? { ok: true }, { status: 201 }, origin);
         } catch (err) {

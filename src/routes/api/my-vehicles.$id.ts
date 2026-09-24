@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { deleteMyVehicle, updateVehicleStatus } from "@/lib/market";
+import { requireApiUserId } from "@/lib/auth/api-auth";
+import {
+  svcDeleteMyVehicle,
+  svcUpdateVehicleStatus,
+} from "@/lib/api/service";
 import {
   apiError,
   corsPreflightResponse,
@@ -16,6 +20,7 @@ export const Route = createFileRoute("/api/my-vehicles/$id")({
       PATCH: async ({ request, params }) => {
         const origin = request.headers.get("origin");
         try {
+          const userId = await requireApiUserId(request);
           const id = Number(params.id);
           if (!Number.isFinite(id) || id <= 0) {
             return jsonWithCors({ error: "ID inválido" }, { status: 400 }, origin);
@@ -29,7 +34,7 @@ export const Route = createFileRoute("/api/my-vehicles/$id")({
               origin,
             );
           }
-          const result = await updateVehicleStatus({ data: { id, status } });
+          const result = await svcUpdateVehicleStatus(userId, id, status);
           return jsonWithCors(result, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
@@ -39,12 +44,13 @@ export const Route = createFileRoute("/api/my-vehicles/$id")({
       DELETE: async ({ request, params }) => {
         const origin = request.headers.get("origin");
         try {
+          const userId = await requireApiUserId(request);
           const id = Number(params.id);
           if (!Number.isFinite(id) || id <= 0) {
             return jsonWithCors({ error: "ID inválido" }, { status: 400 }, origin);
           }
-          await deleteMyVehicle({ data: { id } });
-          return jsonWithCors({ ok: true }, { status: 200 }, origin);
+          const result = await svcDeleteMyVehicle(userId, id);
+          return jsonWithCors(result, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
         }

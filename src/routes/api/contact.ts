@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { submitContact } from "@/lib/market";
+import { getApiUserId } from "@/lib/auth/api-auth";
+import { svcSubmitContact } from "@/lib/api/service";
 import {
   apiError,
   corsPreflightResponse,
@@ -24,16 +25,24 @@ export const Route = createFileRoute("/api/contact")({
             message?: string;
           }>(request);
 
-          await submitContact({
-            data: {
-              name: String(body.name ?? ""),
-              email: String(body.email ?? ""),
-              phone: String(body.phone ?? ""),
-              subject: body.subject ? String(body.subject) : undefined,
-              message: String(body.message ?? ""),
-            },
+          if (!body.name || !body.email || !body.phone || !body.message) {
+            return jsonWithCors(
+              { error: "name, email, phone y message son requeridos" },
+              { status: 400 },
+              origin,
+            );
+          }
+
+          const userId = await getApiUserId(request);
+          const result = await svcSubmitContact({
+            name: body.name,
+            email: body.email,
+            phone: body.phone,
+            subject: body.subject,
+            message: body.message,
+            userId,
           });
-          return jsonWithCors({ ok: true }, { status: 200 }, origin);
+          return jsonWithCors(result ?? { ok: true }, { status: 201 }, origin);
         } catch (err) {
           return apiError(err, origin);
         }

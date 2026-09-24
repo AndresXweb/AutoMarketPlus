@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { listFavorites, toggleFavorite } from "@/lib/market";
+import { requireApiUserId } from "@/lib/auth/api-auth";
+import { svcListFavorites, svcToggleFavorite } from "@/lib/api/service";
 import {
   apiError,
   corsPreflightResponse,
@@ -16,7 +17,8 @@ export const Route = createFileRoute("/api/favorites")({
       GET: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
-          const list = await listFavorites();
+          const userId = await requireApiUserId(request);
+          const list = await svcListFavorites(userId);
           return jsonWithCors(list, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);
@@ -26,6 +28,7 @@ export const Route = createFileRoute("/api/favorites")({
       POST: async ({ request }) => {
         const origin = request.headers.get("origin");
         try {
+          const userId = await requireApiUserId(request);
           const body = await readJson<{ vehicleId?: number }>(request);
           const vehicleId = Number(body.vehicleId);
           if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
@@ -35,7 +38,7 @@ export const Route = createFileRoute("/api/favorites")({
               origin,
             );
           }
-          const result = await toggleFavorite({ data: { vehicleId } });
+          const result = await svcToggleFavorite(userId, vehicleId);
           return jsonWithCors(result, { status: 200 }, origin);
         } catch (err) {
           return apiError(err, origin);

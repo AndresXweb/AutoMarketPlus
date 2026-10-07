@@ -1,33 +1,34 @@
-# Parches AutoMarketPlus — inactividad, ofertas, deals, WhatsApp, cédula
+# AutoMarketPlus
 
-Copia estos archivos sobre el repo (misma ruta relativa).
+Marketplace de compra, venta y permuta de vehiculos entre personas en Colombia.
 
-## Archivos incluidos
+## Caracteristicas
 
-```
-migrations/0004_inactividad_ofertas_deals.sql   ← NUEVA (ejecutar migración)
-src/lib/market.ts                               ← lógica de negocio
-src/lib/images.ts                               ← compresión cédula
-src/routes/publicar.tsx                         ← reglas oferta + WhatsApp
-src/routes/vehiculo.$id.tsx                     ← validación oferta + badge dueño
-src/routes/mis-anuncios.tsx                     ← pausa inactividad + reactivar
-src/routes/perfil.tsx                           ← fix fotos cédula
-src/routes/admin/ofertas.tsx                    ← negocios concretados
-src/routes/admin/index.tsx                      ← métricas deals
-src/routes/admin/anuncios.tsx                   ← extender N días (admin elige)
-```
+- Publicacion de anuncios de vehiculos
+- Sistema de ofertas y compra directa
+- Vigencia de 30 dias con reactivacion
+- Validacion de cedula (fotos comprimidas)
+- Panel de administracion (anuncios, ofertas, deals)
+- WhatsApp opcional al publicar
+- Autenticacion de usuarios
 
-## Qué implementa
+## Stack
 
-1. **30 días** de vigencia. Al vencer → pausado por inactividad.
-2. **1 reactivación gratis** (+30 días). Después → solicitud; admin elige días.
-3. **Compra directa**: aceptar menores / % mínimo / nunca > precio.
-4. **Badge de ofertas solo para el dueño**.
-5. **Fotos cédula**: compresión más liviana + validación clara; admin valida igual.
-6. **Trazabilidad**: `deals` + `accepted_at/by/final_amount` al aceptar.
-7. **WhatsApp opcional** al publicar (`show_whatsapp`).
+- TanStack Start (React + Router + Query)
+- Tailwind CSS
+- Better Auth
+- PostgreSQL / Neon
+- Vite + Nitro (deploy en Vercel)
 
-## Después de copiar
+## Requisitos
 
-1. Aplicar la migración `0004_...sql` en tu Postgres / Neon.
-2. Reiniciar el servidor de desarrollo.
+- Node.js 20+
+- Base de datos PostgreSQL (o Neon)
+
+## Instalacion
+
+```bash
+npm install
+cp .env.example .env
+# Configura DATABASE_URL y variables de auth en .env
+npm run dev

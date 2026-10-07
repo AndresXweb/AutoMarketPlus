@@ -1,5 +1,5 @@
-{
-  "name": "app-builder-workspace",
+﻿{
+  "name": "automarketplus",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -98,3 +98,4 @@
     "vite": "^8.2.0"
   }
 }
+

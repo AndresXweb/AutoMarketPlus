@@ -1,11 +1,11 @@
-import js from "@eslint/js";
+﻿import js from "@eslint/js";
 import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-/** Flat ESLint config for the TanStack Start app-builder template. */
+/** Flat ESLint config for the TanStack Start project. */
 export default tseslint.config(
   {
     ignores: [
@@ -45,3 +45,4 @@ export default tseslint.config(
   // Disable rules that conflict with Prettier formatting.
   prettier,
 );
+

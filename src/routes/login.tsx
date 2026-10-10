@@ -49,8 +49,7 @@ function Login() {
   const [whatsapp, setWhatsapp] = useState("");
   const [city, setCity] = useState(CITIES[0] ?? "Bogotá");
   const [address, setAddress] = useState("");
-  const [documentType, setDocumentType] = useState<(typeof DOC_TYPES)[number]>("CC");
-  const [documentNumber, setDocumentNumber] = useState("");
+  const [documentType, setDocumentType] = useState("CC");  const [documentNumber, setDocumentNumber] = useState("");
   const [aceptoTerminos, setAceptoTerminos] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -262,14 +261,16 @@ function Login() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Tipo de documento">
-                  <Select
-                    value={documentType}
-                    onChange={(e) => setDocumentType(e.target.value as typeof documentType)}
-                  >
-                    {DOC_TYPES.map((d) => (
-                      <option key={d}>{d}</option>
-                    ))}
-                  </Select>
+              <Select
+                value={documentType}
+                onChange={(e) => setDocumentType(e.target.value)}
+                >
+                {DOC_TYPES.map((d) => (
+                <option key={d.value} value={d.value}>
+                {d.label}
+                </option>
+                ))}
+              </Select>
                 </Field>
                 <Field label="Número">
                   <Input

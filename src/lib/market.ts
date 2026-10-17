@@ -29,6 +29,7 @@ export type Vehicle = {
   createdAt: string;
   lastActivityAt?: string | null;
   pausedReason?: string | null;
+  rejectionNote?: string | null;
   freeReactivationsUsed?: number;
   reactivationRequestedAt?: string | null;
   showWhatsapp?: boolean;
@@ -165,6 +166,7 @@ type VehicleRow = {
   created_at: string;
   last_activity_at?: string | null;
   paused_reason?: string | null;
+  rejection_note?: string | null;
   free_reactivations_used?: number | null;
   reactivation_requested_at?: string | null;
   show_whatsapp?: boolean | number | null;
@@ -217,6 +219,7 @@ function mapVehicle(row: VehicleRow, favoriteIds?: Set<number>): Vehicle {
     createdAt: String(row.created_at),
     lastActivityAt: row.last_activity_at ? String(row.last_activity_at) : null,
     pausedReason: row.paused_reason ?? null,
+    rejectionNote: row.rejection_note ?? null,
     freeReactivationsUsed: Number(row.free_reactivations_used ?? 0),
     reactivationRequestedAt: row.reactivation_requested_at
       ? String(row.reactivation_requested_at)
@@ -445,9 +448,9 @@ const vehicleInput = z.object({
   title: z.string().min(3).max(120),
   brand: z.string().min(1).max(40),
   model: z.string().min(1).max(40),
-  year: z.number().int().min(1980).max(2030),
+  year: z.number().int().min(1980).max(new Date().getFullYear() + 1),
   mileage: z.number().int().min(0).max(1_000_000),
-  price: z.number().min(0),
+  price: z.number().min(0).max(50_000_000_000),
   condition: z.enum(["nuevo", "seminuevo", "usado"]),
   fuel: z.enum(["gasolina", "diesel", "hibrido", "electrico"]),
   transmission: z.enum(["manual", "automatica"]),
@@ -470,19 +473,38 @@ const vehicleInput = z.object({
   minOfferPercent: z.number().min(1).max(100).nullable().optional(),
 });
 
-const listFilter = z.object({
-  q: z.string().optional(),
-  brand: z.string().optional(),
-  listingType: z.string().optional(),
-  bodyType: z.string().optional(),
-  city: z.string().optional(),
-  fuel: z.string().optional(),
-  minPrice: z.number().optional(),
-  maxPrice: z.number().optional(),
-  yearMin: z.number().optional(),
-  yearMax: z.number().optional(),
-  verifiedOnly: z.boolean().optional(),
-});
+const listFilter = z
+  .object({
+    q: z.string().optional(),
+    brand: z.string().optional(),
+    listingType: z.string().optional(),
+    bodyType: z.string().optional(),
+    city: z.string().optional(),
+    fuel: z.string().optional(),
+    minPrice: z.number().min(0).optional(),
+    maxPrice: z.number().min(0).optional(),
+    yearMin: z.number().int().optional(),
+    yearMax: z.number().int().optional(),
+    verifiedOnly: z.boolean().optional(),
+  })
+  .refine(
+    (d) =>
+      d.minPrice == null ||
+      d.maxPrice == null ||
+      !Number.isFinite(d.minPrice) ||
+      !Number.isFinite(d.maxPrice) ||
+      d.minPrice <= d.maxPrice,
+    { message: "El precio mínimo no puede ser mayor que el máximo." },
+  )
+  .refine(
+    (d) =>
+      d.yearMin == null ||
+      d.yearMax == null ||
+      !Number.isFinite(d.yearMin) ||
+      !Number.isFinite(d.yearMax) ||
+      d.yearMin <= d.yearMax,
+    { message: "El año mínimo no puede ser mayor que el máximo." },
+  );
 
 const VEHICLE_SELECT = `
   v.*, p.display_name as seller_name,
@@ -1386,7 +1408,11 @@ export const submitContact = createServerFn({ method: "POST" })
     z.object({
       name: z.string().min(2).max(80),
       email: z.string().email(),
-      phone: z.string().min(6).max(30),
+      phone: z
+        .string()
+        .min(7)
+        .max(20)
+        .regex(/^\+?[0-9]{7,15}$/, "Teléfono: solo dígitos (opcional + al inicio)"),
       subject: z.string().max(120).optional(),
       message: z.string().min(8).max(2000),
     }),
@@ -1668,10 +1694,18 @@ export const adminListVehicles = createServerFn({ method: "GET" })
 export const adminSetVehicleStatus = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(
-    z.object({
-      id: z.number(),
-      status: z.enum(["activo", "pausado", "vendido", "rechazado", "pendiente_revision"]),
-    }),
+    z
+      .object({
+        id: z.number(),
+        status: z.enum(["activo", "pausado", "vendido", "rechazado", "pendiente_revision"]),
+        note: z.string().max(400).optional(),
+      })
+      .refine(
+        (d) =>
+          d.status !== "rechazado" ||
+          (typeof d.note === "string" && d.note.trim().length >= 10),
+        { message: "Al rechazar un anuncio debes indicar el motivo (mín. 10 caracteres)." },
+      ),
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context.userId);
@@ -1681,6 +1715,7 @@ export const adminSetVehicleStatus = createServerFn({ method: "POST" })
         update vehicles
         set status = 'activo',
             paused_reason = null,
+            rejection_note = null,
             reactivation_requested_at = null,
             last_activity_at = now()
         where id = ${data.id}
@@ -1689,6 +1724,14 @@ export const adminSetVehicleStatus = createServerFn({ method: "POST" })
       await sql`
         update vehicles
         set status = 'pausado', paused_reason = 'manual'
+        where id = ${data.id}
+      `;
+    } else if (data.status === "rechazado") {
+      const note = (data.note ?? "").trim();
+      await sql`
+        update vehicles
+        set status = 'rechazado',
+            rejection_note = ${note}
         where id = ${data.id}
       `;
     } else {

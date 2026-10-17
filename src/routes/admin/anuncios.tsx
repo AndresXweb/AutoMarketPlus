@@ -19,6 +19,9 @@ function Anuncios() {
   const [rows, setRows] = useState<Vehicle[]>([]);
   const [requests, setRequests] = useState<Vehicle[]>([]);
   const [extendDays, setExtendDays] = useState<Record<number, string>>({});
+  const [rejectId, setRejectId] = useState<number | null>(null);
+  const [rejectNote, setRejectNote] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function reload() {
     try {
@@ -39,6 +42,46 @@ function Anuncios() {
   }, []);
 
   const pending = rows.filter((v) => v.status === "pendiente_revision").length;
+
+  async function setStatus(
+    id: number,
+    status: "activo" | "pausado" | "vendido" | "rechazado" | "pendiente_revision",
+    note?: string,
+  ) {
+    setBusy(true);
+    try {
+      await adminSetVehicleStatus({
+        data: { id, status, note },
+      });
+      toast.success(
+        status === "rechazado"
+          ? "Anuncio rechazado. El vendedor verá el motivo."
+          : `Estado actualizado: ${STATUS_LABEL[status] ?? status}`,
+      );
+      setRejectId(null);
+      setRejectNote("");
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo actualizar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openReject(id: number) {
+    setRejectId(id);
+    setRejectNote("");
+  }
+
+  function confirmReject() {
+    if (rejectId == null) return;
+    const note = rejectNote.trim();
+    if (note.length < 10) {
+      toast.error("El motivo debe tener al menos 10 caracteres.");
+      return;
+    }
+    void setStatus(rejectId, "rechazado", note);
+  }
 
   return (
     <div>
@@ -64,7 +107,7 @@ function Anuncios() {
                   max={365}
                   value={extendDays[v.id] ?? "30"}
                   onChange={(e) =>
-                    setExtendDays((prev) => ({ ...prev, [v.id]: e.target.value }))
+                    setExtendDays((prev) => ({ ...prev, [v.id]: e.target.value.replace(/\D/g, "") }))
                   }
                   className="w-16 rounded border border-border bg-bg px-2 py-1"
                   aria-label="Días a otorgar"
@@ -72,8 +115,13 @@ function Anuncios() {
                 <span className="text-xs text-muted">días</span>
                 <Button
                   size="sm"
+                  disabled={busy}
                   onClick={() => {
                     const days = Number(extendDays[v.id] ?? 30);
+                    if (!Number.isFinite(days) || days < 1) {
+                      toast.error("Indica un número de días válido (1–365).");
+                      return;
+                    }
                     void adminExtendListing({ data: { id: v.id, days } })
                       .then(() => {
                         toast.success(`Anuncio extendido ${days} días.`);
@@ -89,6 +137,41 @@ function Anuncios() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {rejectId != null && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-surface p-5 shadow-lg">
+            <h2 className="font-display text-xl font-semibold">Motivo del rechazo</h2>
+            <p className="mt-1 text-sm text-muted">
+              El vendedor verá este texto en Mis anuncios. Sé claro y concreto.
+            </p>
+            <textarea
+              className="mt-4 min-h-28 w-full rounded-md border border-border bg-elevated px-3 py-2 text-sm"
+              placeholder="Ej: Las fotos no muestran la placa ni el odómetro. Sube imágenes legibles y vuelve a enviar."
+              value={rejectNote}
+              maxLength={400}
+              onChange={(e) => setRejectNote(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-subtle">{rejectNote.trim().length}/400 (mín. 10)</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  setRejectId(null);
+                  setRejectNote("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button size="sm" variant="danger" disabled={busy} onClick={confirmReject}>
+                Confirmar rechazo
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -121,30 +204,45 @@ function Anuncios() {
                 <Badge>{LISTING_LABEL[v.listingType]}</Badge>
                 {v.sellerVerified && <VerifiedBadge />}
               </div>
+              {v.status === "rechazado" && v.rejectionNote && (
+                <p className="mt-2 text-xs text-danger">Motivo: {v.rejectionNote}</p>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {v.status === "pendiente_revision" && (
                 <Button
                   size="sm"
-                  onClick={() =>
-                    void adminSetVehicleStatus({ data: { id: v.id, status: "activo" } }).then(reload)
-                  }
+                  disabled={busy}
+                  onClick={() => void setStatus(v.id, "activo")}
                 >
                   Aprobar
                 </Button>
               )}
-              {(["activo", "pausado", "vendido", "rechazado"] as const).map((s) => (
+              {(
+                [
+                  ["activo", "Activo"],
+                  ["pausado", "Pausado"],
+                  ["vendido", "Vendido"],
+                ] as const
+              ).map(([s, label]) => (
                 <Button
                   key={s}
                   size="sm"
                   variant={v.status === s ? "default" : "secondary"}
-                  onClick={() =>
-                    void adminSetVehicleStatus({ data: { id: v.id, status: s } }).then(reload)
-                  }
+                  disabled={busy}
+                  onClick={() => void setStatus(v.id, s)}
                 >
-                  {STATUS_LABEL[s]}
+                  {label}
                 </Button>
               ))}
+              <Button
+                size="sm"
+                variant={v.status === "rechazado" ? "default" : "danger"}
+                disabled={busy}
+                onClick={() => openReject(v.id)}
+              >
+                Rechazar
+              </Button>
             </div>
           </li>
         ))}

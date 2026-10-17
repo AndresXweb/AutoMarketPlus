@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { SiteShell } from "@/components/site-shell";
 import { VehicleCard } from "@/components/vehicle-card";
 import { Input, Select } from "@/components/ui/input";
@@ -11,6 +12,11 @@ export const Route = createFileRoute("/catalogo")({
   loader: () => listVehicles({ data: {} }),
   component: Catalogo,
 });
+
+/** Solo dígitos; vacío permitido. */
+function onlyDigits(raw: string): string {
+  return raw.replace(/\D/g, "");
+}
 
 function Catalogo() {
   const initial = Route.useLoaderData();
@@ -25,9 +31,27 @@ function Catalogo() {
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [items, setItems] = useState<Vehicle[]>(initial);
   const [loading, setLoading] = useState(false);
+  const [filterError, setFilterError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
+      const min = minPrice ? Number(minPrice) : undefined;
+      const max = maxPrice ? Number(maxPrice) : undefined;
+
+      if (min != null && (!Number.isFinite(min) || min < 0)) {
+        setFilterError("El precio mínimo no es válido.");
+        return;
+      }
+      if (max != null && (!Number.isFinite(max) || max < 0)) {
+        setFilterError("El precio máximo no es válido.");
+        return;
+      }
+      if (min != null && max != null && min > max) {
+        setFilterError("El precio mínimo no puede ser mayor que el máximo.");
+        return;
+      }
+      setFilterError(null);
+
       setLoading(true);
       listVehicles({
         data: {
@@ -37,13 +61,17 @@ function Catalogo() {
           bodyType: bodyType || undefined,
           city: city || undefined,
           fuel: fuel || undefined,
-          minPrice: minPrice ? Number(minPrice) : undefined,
-          maxPrice: maxPrice ? Number(maxPrice) : undefined,
+          minPrice: min,
+          maxPrice: max,
           verifiedOnly: verifiedOnly || undefined,
         },
       })
         .then(setItems)
-        .catch(() => setItems([]))
+        .catch((err) => {
+          setItems([]);
+          const msg = err instanceof Error ? err.message : "Error al filtrar.";
+          toast.error(msg);
+        })
         .finally(() => setLoading(false));
     }, 180);
     return () => clearTimeout(t);
@@ -107,38 +135,54 @@ function Catalogo() {
             <option value="electrico">Eléctrico</option>
           </Select>
           <Input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             min={0}
             placeholder="Precio min"
             value={minPrice}
-            onChange={(e) => setMinPrice(e.target.value)}
+            onChange={(e) => setMinPrice(onlyDigits(e.target.value))}
           />
           <Input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             min={0}
             placeholder="Precio max"
             value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value)}
+            onChange={(e) => setMaxPrice(onlyDigits(e.target.value))}
           />
           <label className="flex items-center gap-2 text-sm text-muted md:col-span-2">
-            <input type="checkbox" checked={verifiedOnly} onChange={(e) => setVerifiedOnly(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={verifiedOnly}
+              onChange={(e) => setVerifiedOnly(e.target.checked)}
+            />
             Solo vendedores verificados
           </label>
         </div>
 
+        {filterError && (
+          <p className="mt-3 text-sm text-danger">{filterError}</p>
+        )}
+
         <p className="mt-5 text-sm text-muted">
-          {loading ? "Buscando…" : `${items.length} vehículo${items.length === 1 ? "" : "s"}`}
+          {loading
+            ? "Buscando…"
+            : filterError
+              ? "Corrige el rango de precios para buscar."
+              : `${items.length} vehículo${items.length === 1 ? "" : "s"}`}
         </p>
 
-        {items.length === 0 ? (
+        {!filterError && items.length === 0 ? (
           <p className="mt-16 text-center text-sm text-muted">No hay vehículos con esos filtros.</p>
-        ) : (
+        ) : !filterError ? (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((v) => (
               <VehicleCard key={v.id} vehicle={v} />
             ))}
           </div>
-        )}
+        ) : null}
       </main>
     </SiteShell>
   );

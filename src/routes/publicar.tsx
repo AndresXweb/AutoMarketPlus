@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { onNonNegIntInput, onlyDigits } from "@/lib/input-rules";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { BRANDS, CITIES, STOCK_IMAGES } from "@/lib/format";
@@ -103,14 +104,29 @@ function Publicar() {
             priceMin: fd.get("swapPriceMin") ? Number(fd.get("swapPriceMin")) : undefined,
             priceMax: fd.get("swapPriceMax") ? Number(fd.get("swapPriceMax")) : undefined,
           };
+      const year = Number(fd.get("year"));
+      const mileage = Number(fd.get("mileage"));
+      const price = Number(fd.get("price"));
+      if (!Number.isFinite(year) || year < 1980 || year > new Date().getFullYear() + 1) {
+        toast.error("Año inválido.");
+        return;
+      }
+      if (!Number.isFinite(mileage) || mileage < 0) {
+        toast.error("El kilometraje no puede ser negativo.");
+        return;
+      }
+      if (!Number.isFinite(price) || price < 0) {
+        toast.error("El precio no puede ser negativo.");
+        return;
+      }
       const res = await createVehicle({
         data: {
           title: String(fd.get("title")),
           brand: String(fd.get("brand")),
           model: String(fd.get("model")),
-          year: Number(fd.get("year")),
-          mileage: Number(fd.get("mileage")),
-          price: Number(fd.get("price")),
+          year,
+          mileage,
+          price,
           condition: String(fd.get("condition")) as "nuevo" | "seminuevo" | "usado",
           fuel: String(fd.get("fuel")) as "gasolina" | "diesel" | "hibrido" | "electrico",
           transmission: String(fd.get("transmission")) as "manual" | "automatica",
@@ -199,13 +215,13 @@ function Publicar() {
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Año">
-              <Input name="year" type="number" required min={1980} max={2030} defaultValue={2020} />
+              <Input name="year" type="text" inputMode="numeric" pattern="[0-9]*" required min={1980} max={2030} defaultValue={2020} onInput={onNonNegIntInput} />
             </Field>
             <Field label="Kilometraje">
-              <Input name="mileage" type="number" required min={0} defaultValue={40000} />
+              <Input name="mileage" type="text" inputMode="numeric" pattern="[0-9]*" required min={0} defaultValue={40000} onInput={onNonNegIntInput} />
             </Field>
             <Field label="Precio COP">
-              <Input name="price" type="number" required min={0} defaultValue={50000000} />
+              <Input name="price" type="text" inputMode="numeric" pattern="[0-9]*" required min={0} defaultValue={50000000} onInput={onNonNegIntInput} />
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -332,7 +348,7 @@ function Publicar() {
                   <Input name="taxesDetail" placeholder="Rodamiento 2026, valorización…" />
                 </Field>
                 <Field label="Valor a deber (COP)">
-                  <Input name="taxesAmount" type="number" min={0} defaultValue={0} />
+                  <Input name="taxesAmount" type="text" inputMode="numeric" pattern="[0-9]*" min={0} defaultValue={0} onInput={onNonNegIntInput} />
                 </Field>
               </div>
             )}
@@ -350,7 +366,7 @@ function Publicar() {
                   <Input name="finesDetail" placeholder="Foto-multa, exceso de velocidad…" />
                 </Field>
                 <Field label="Valor a deber (COP)">
-                  <Input name="finesAmount" type="number" min={0} defaultValue={0} />
+                  <Input name="finesAmount" type="text" inputMode="numeric" pattern="[0-9]*" min={0} defaultValue={0} onInput={onNonNegIntInput} />
                 </Field>
               </div>
             )}
@@ -441,13 +457,13 @@ function Publicar() {
                     <Input name="swapModel" placeholder="Opcional" />
                   </Field>
                   <Field label="Año mínimo">
-                    <Input name="swapYearMin" type="number" min={1980} max={2030} />
+                    <Input name="swapYearMin" type="text" inputMode="numeric" pattern="[0-9]*" min={1980} max={2030} onInput={onNonNegIntInput} />
                   </Field>
                   <Field label="Año máximo">
-                    <Input name="swapYearMax" type="number" min={1980} max={2030} />
+                    <Input name="swapYearMax" type="text" inputMode="numeric" pattern="[0-9]*" min={1980} max={2030} onInput={onNonNegIntInput} />
                   </Field>
                   <Field label="Kilometraje máximo">
-                    <Input name="swapMileageMax" type="number" min={0} />
+                    <Input name="swapMileageMax" type="text" inputMode="numeric" pattern="[0-9]*" min={0} onInput={onNonNegIntInput} />
                   </Field>
                   <Field label="Estado">
                     <Select name="swapCondition" defaultValue="">
@@ -493,10 +509,10 @@ function Publicar() {
                     </Select>
                   </Field>
                   <Field label="Precio mínimo COP">
-                    <Input name="swapPriceMin" type="number" min={0} />
+                    <Input name="swapPriceMin" type="text" inputMode="numeric" pattern="[0-9]*" min={0} onInput={onNonNegIntInput} />
                   </Field>
                   <Field label="Precio máximo COP">
-                    <Input name="swapPriceMax" type="number" min={0} />
+                    <Input name="swapPriceMax" type="text" inputMode="numeric" pattern="[0-9]*" min={0} onInput={onNonNegIntInput} />
                   </Field>
                 </div>
               )}

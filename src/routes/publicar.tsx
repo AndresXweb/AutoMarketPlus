@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { BRANDS, CITIES, STOCK_IMAGES } from "@/lib/format";
+import { BRANDS, CITIES } from "@/lib/format";
 import { compressImageFile } from "@/lib/images";
 import { createVehicle, getMyProfile } from "@/lib/market";
 import type { SwapPrefs } from "@/lib/swap";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/publicar")({ component: Publicar });
 
@@ -18,7 +17,7 @@ function Publicar() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const [images, setImages] = useState<string[]>([STOCK_IMAGES[0].src]);
+  const [images, setImages] = useState<string[]>([]);
   const [listingType, setListingType] = useState<"venta" | "permuta" | "ambos">("venta");
   const [taxesCurrent, setTaxesCurrent] = useState(true);
   const [finesCurrent, setFinesCurrent] = useState(true);
@@ -51,27 +50,21 @@ function Publicar() {
   }
   if (!user) return <RedirectToSignIn />;
 
-  function toggleStock(src: string) {
-    setImages((curr) => {
-      if (curr.includes(src)) return curr.filter((x) => x !== src);
-      if (curr.length >= 6) {
-        toast.error("Máximo 6 fotos.");
-        return curr;
-      }
-      return [...curr, src];
-    });
-  }
-
   async function addFiles(files: FileList | null) {
-    if (!files) return;
+    if (!files || files.length === 0) return;
     try {
       const next = [...images];
       for (const file of Array.from(files)) {
         if (next.length >= 6) break;
         next.push(await compressImageFile(file));
       }
-      if (images.length + files.length > 6) toast.error("Se tomaron solo las primeras hasta 6.");
+      if (images.length + files.length > 6) {
+        toast.error("Se tomaron solo las primeras hasta 6.");
+      }
       setImages(next.slice(0, 6));
+      toast.success(
+        next.length === 1 ? "1 foto agregada." : `${next.length} fotos en la galería.`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudieron cargar las fotos.");
     }
@@ -80,7 +73,7 @@ function Publicar() {
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!images.length) {
-      toast.error("Agrega al menos una foto.");
+      toast.error("Sube al menos una foto real del vehículo.");
       return;
     }
     const fd = new FormData(e.currentTarget);
@@ -94,7 +87,9 @@ function Publicar() {
             model: String(fd.get("swapModel") || "") || undefined,
             yearMin: fd.get("swapYearMin") ? Number(fd.get("swapYearMin")) : undefined,
             yearMax: fd.get("swapYearMax") ? Number(fd.get("swapYearMax")) : undefined,
-            mileageMax: fd.get("swapMileageMax") ? Number(fd.get("swapMileageMax")) : undefined,
+            mileageMax: fd.get("swapMileageMax")
+              ? Number(fd.get("swapMileageMax"))
+              : undefined,
             condition: String(fd.get("swapCondition") || "") || undefined,
             fuel: String(fd.get("swapFuel") || "") || undefined,
             transmission: String(fd.get("swapTransmission") || "") || undefined,
@@ -103,6 +98,7 @@ function Publicar() {
             priceMin: fd.get("swapPriceMin") ? Number(fd.get("swapPriceMin")) : undefined,
             priceMax: fd.get("swapPriceMax") ? Number(fd.get("swapPriceMax")) : undefined,
           };
+
       const res = await createVehicle({
         data: {
           title: String(fd.get("title")),
@@ -142,6 +138,7 @@ function Publicar() {
               : null,
         },
       });
+
       toast.success(
         res.status === "activo"
           ? "Anuncio publicado."
@@ -162,14 +159,15 @@ function Publicar() {
           Vender o permutar
         </p>
         <h1 className="mt-2 font-display text-4xl font-semibold">Publicar anuncio</h1>
+
         {disabled ? (
           <p className="mt-4 rounded-md bg-danger/15 px-3 py-3 text-sm text-danger">
             Tu cuenta está deshabilitada.
           </p>
         ) : verified === false ? (
           <p className="mt-4 rounded-md bg-elevated px-3 py-3 text-sm text-muted">
-            Todavía no estás verificado: el anuncio queda en revisión hasta que un administrador lo
-            apruebe.{" "}
+            Todavía no estás verificado: el anuncio queda en revisión hasta que un
+            administrador lo apruebe.{" "}
             <Link to="/perfil" className="text-accent">
               Verifica tu cédula
             </Link>{" "}
@@ -183,8 +181,14 @@ function Publicar() {
 
         <form onSubmit={onSubmit} className="mt-8 grid gap-4">
           <Field label="Título">
-            <Input name="title" required minLength={3} placeholder="Mazda CX-5 Grand Touring 2020" />
+            <Input
+              name="title"
+              required
+              minLength={3}
+              placeholder="Mazda CX-5 Grand Touring 2020"
+            />
           </Field>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Marca">
               <Select name="brand" required defaultValue="Toyota">
@@ -197,6 +201,7 @@ function Publicar() {
               <Input name="model" required placeholder="Corolla, CX-5, Onix Turbo…" />
             </Field>
           </div>
+
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Año">
               <Input name="year" type="number" required min={1980} max={2030} defaultValue={2020} />
@@ -208,6 +213,7 @@ function Publicar() {
               <Input name="price" type="number" required min={0} defaultValue={50000000} />
             </Field>
           </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Estado">
               <Select name="condition" defaultValue="usado">
@@ -228,6 +234,7 @@ function Publicar() {
               </Select>
             </Field>
           </div>
+
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Combustible">
               <Select name="fuel" defaultValue="gasolina">
@@ -254,6 +261,7 @@ function Publicar() {
               </Select>
             </Field>
           </div>
+
           <Field label="Ciudad">
             <Select name="city" defaultValue="Bogotá">
               {CITIES.map((c) => (
@@ -261,51 +269,59 @@ function Publicar() {
               ))}
             </Select>
           </Field>
+
           <Field label="Descripción">
-            <Textarea name="description" required minLength={10} placeholder="Estado, extras, historia del vehículo…" />
+            <Textarea
+              name="description"
+              required
+              minLength={10}
+              placeholder="Estado, extras, historia del vehículo…"
+            />
           </Field>
 
-          <div>
-            <p className="mb-2 text-sm font-medium text-muted">Galería (máximo 6)</p>
-            <p className="mb-3 text-xs text-subtle">Elige fotos de referencia o sube las tuyas. Se deslizan solas en el anuncio.</p>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-              {STOCK_IMAGES.map((img) => (
-                <button
-                  key={img.src}
-                  type="button"
-                  onClick={() => toggleStock(img.src)}
-                  className={cn(
-                    "overflow-hidden rounded-md",
-                    images.includes(img.src) ? "ring-2 ring-accent" : "ring-1 ring-border",
-                  )}
-                  aria-label={img.label}
-                >
-                  <img src={img.src} alt="" className="aspect-square object-cover" />
-                </button>
-              ))}
-            </div>
+          <div className="rounded-xl border border-border bg-surface/60 p-4">
+            <p className="mb-1 text-sm font-medium text-muted">
+              Fotos del vehículo (máximo 6)
+            </p>
+            <p className="mb-3 text-xs text-subtle">
+              Sube fotos reales del auto desde tu dispositivo. La primera será la portada.
+            </p>
             <input
               type="file"
               accept="image/*"
               multiple
-              className="mt-3 text-xs text-muted"
-              onChange={(e) => void addFiles(e.target.files)}
+              className="block w-full text-xs text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-2 file:text-sm file:font-medium file:text-white"
+              onChange={(e) => {
+                void addFiles(e.target.files);
+                e.target.value = "";
+              }}
             />
-            {images.length > 0 && (
+            {images.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-2">
-                {images.map((src) => (
+                {images.map((src, i) => (
                   <button
-                    key={src}
+                    key={`${i}-${src.slice(0, 40)}`}
                     type="button"
-                    onClick={() => setImages((c) => c.filter((x) => x !== src))}
+                    onClick={() => setImages((c) => c.filter((_, idx) => idx !== i))}
                     className="relative overflow-hidden rounded-md ring-1 ring-border"
                     aria-label="Quitar foto"
+                    title="Clic para quitar"
                   >
-                    <img src={src} alt="" className="size-16 object-cover" />
+                    <img src={src} alt="" className="size-20 object-cover" />
+                    {i === 0 && (
+                      <span className="absolute bottom-0 left-0 right-0 bg-black/65 py-0.5 text-center text-[10px] text-white">
+                        Portada
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
+            ) : (
+              <p className="mt-2 text-xs text-danger">
+                Debes subir al menos una foto real del vehículo.
+              </p>
             )}
+            <p className="mt-2 text-xs text-subtle">{images.length}/6 fotos</p>
           </div>
 
           <div className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
@@ -357,7 +373,7 @@ function Publicar() {
           </div>
 
           {(listingType === "venta" || listingType === "ambos") && (
-            <div className="rounded-xl border border-border bg-surface/60 p-4 space-y-3">
+            <div className="space-y-3 rounded-xl border border-border bg-surface/60 p-4">
               <p className="text-sm font-medium">Reglas de ofertas de compra</p>
               <label className="flex items-start gap-2 text-sm">
                 <input
@@ -369,7 +385,7 @@ function Publicar() {
                 <span>
                   Acepto ofertas <strong>menores</strong> al precio publicado.
                   <span className="block text-xs text-muted">
-                    Si no marcas esto, solo se podrá ofertar el precio exacto. Nadie puede ofertar más del precio.
+                    Si no marcas esto, solo se podrá ofertar el precio exacto.
                   </span>
                 </span>
               </label>
@@ -393,11 +409,8 @@ function Publicar() {
                           onChange={(e) => setMinOfferPercent(e.target.value)}
                           className="w-20 rounded-md border border-border bg-bg px-2 py-1 text-sm"
                         />
-                        <span className="text-xs text-muted">% del precio (ej. 70 = mínimo 70%)</span>
+                        <span className="text-xs text-muted">% del precio</span>
                       </span>
-                    )}
-                    {!customMinPercent && (
-                      <span className="block text-xs text-muted">Sin mínimo: aceptas cualquier oferta ≤ precio.</span>
                     )}
                   </span>
                 </label>
@@ -405,7 +418,7 @@ function Publicar() {
             </div>
           )}
 
-          <label className="flex items-start gap-2 text-sm rounded-xl border border-border bg-surface/60 p-4">
+          <label className="flex items-start gap-2 rounded-xl border border-border bg-surface/60 p-4 text-sm">
             <input
               type="checkbox"
               className="mt-1"
@@ -415,7 +428,7 @@ function Publicar() {
             <span>
               Mostrar mi WhatsApp en el anuncio
               <span className="block text-xs text-muted">
-                Si lo desactivas, los interesados solo verán el correo (si lo tienes) o deberán ofertar.
+                Si lo desactivas, los interesados solo verán el correo o deberán ofertar.
               </span>
             </span>
           </label>
@@ -424,7 +437,11 @@ function Publicar() {
             <div className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
               <h2 className="font-display text-lg font-semibold">Qué recibes en permuta</h2>
               <label className="mt-3 flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={swapAny} onChange={(e) => setSwapAny(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={swapAny}
+                  onChange={(e) => setSwapAny(e.target.checked)}
+                />
                 Recibo cualquier tipo de vehículo
               </label>
               {!swapAny && (

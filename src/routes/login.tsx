@@ -267,7 +267,9 @@ function Login() {
                     onChange={(e) => setDocumentType(e.target.value as typeof documentType)}
                   >
                     {DOC_TYPES.map((d) => (
-                      <option key={d}>{d}</option>
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
                     ))}
                   </Select>
                 </Field>

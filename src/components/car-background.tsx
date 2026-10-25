@@ -12,7 +12,7 @@ const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const ease = (t: number) => t * t * (3 - 2 * t);
 
 const REVEAL =
-  ".am-car ~ * :is(h1, h2, p, .am-card-3d, a:has(> button))";
+  ".am-car ~ * :is(h1, h2, .am-card-3d, a:has(> button))";
 
 /**
  * Carro de fondo: nítido cuando está armado; al bajar se rompe en
@@ -24,7 +24,7 @@ const REVEAL =
  */
 export function CarBackground({
   src = "/ferrari.webp",
-  screens = 2.4, // cuántas pantallas de scroll tarda en desarmarse
+  screens = 1.6, // cuántas pantallas de scroll tarda en desarmarse
 }: {
   src?: string;
   screens?: number;
@@ -208,6 +208,12 @@ export function CarBackground({
       }
     });
 
+    const safety = window.setTimeout(() => {
+      document.querySelectorAll("[data-am]:not([data-am-in])").forEach((el) => {
+        if (el.getBoundingClientRect().top < window.innerHeight) el.setAttribute("data-am-in", "");
+      });
+    }, 2000);
+
     img.onload = build;
     img.src = src;
     size();
@@ -218,6 +224,7 @@ export function CarBackground({
     return () => {
       alive = false;
       cancelAnimationFrame(raf);
+      window.clearTimeout(safety);
       io.disconnect();
       html.classList.remove("am-js");
       revealed.forEach((el) => {

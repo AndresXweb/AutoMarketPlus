@@ -1,3 +1,4 @@
+import { CarBackground } from "@/components/car-background";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, RefreshCw, Shield, Tag } from "lucide-react";
 import { SiteShell } from "@/components/site-shell";
@@ -18,6 +19,7 @@ function Home() {
 
   return (
     <SiteShell>
+      <CarBackground />
       <section className="relative overflow-hidden">
         {/* Luces de ambiente */}
         <div className="am-orb left-[-10%] top-[-20%] h-[420px] w-[420px] bg-accent/30" />

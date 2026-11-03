@@ -151,5 +151,16 @@ export default defineConfig(({ command, isPreview }) => ({
       : []),
     viteReact(),
   ],
-}));
 
+  // ——— Configuración de Vitest para React Testing Library (Semana 3) ———
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    // Si ya tienes umbral de cobertura de la semana 2, déjalo aquí
+    // coverage: {
+    //   thresholds: { lines: 40 }, // o el valor que tengáis
+    // },
+  },
+}));

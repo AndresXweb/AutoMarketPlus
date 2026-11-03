@@ -1,8 +1,6 @@
-New-Item -ItemType Directory -Force docs | Out-Null
-$txt = @'
 # Matriz de rotación de capas
 
-**Grupo**: AutoMarketPlus · **Ficha**: (número) · **Stack**: React (TanStack Start) + PostgreSQL
+**Grupo**: AutoMarketPlus · **Ficha**: (número de ficha) · **Stack**: React (TanStack Start) + PostgreSQL
 
 Capas: **Front** (React) · **API** (backend) · **BD** (integración) · **E2E** (Playwright)
 
@@ -14,24 +12,20 @@ Reglas:
 
 | Integrante (usuario GitHub) | S1  | S2 | S3 | S4 | S5 | S6 | S7 | S8 | S9 |
 |-----------------------------|-----|----|----|----|----|----|----|----|----|
-| @integrante-1               | E2E |    |    |    |    |    |    |    |    |
-| @integrante-2               | E2E |    |    |    |    |    |    |    |    |
-| @integrante-3               | E2E |    |    |    |    |    |    |    |    |
+| @AndresXweb                 | E2E |    |    |    |    |    |    |    |    |
+| @NicoSogamoso               | E2E |    |    |    |    |    |    |    |    |
+| @(tercer integrante)        | E2E |    |    |    |    |    |    |    |    |
 
 ## Cobertura semanal
 
-Anota la cobertura real al cerrar cada semana. El umbral de la semana siguiente es el mayor entre el piso del plan y este valor, redondeado hacia abajo.
-
 | Semana          | Frontend (%) | Backend (%) | Umbral configurado para la semana siguiente |
 |-----------------|--------------|-------------|---------------------------------------------|
-| S1 (línea base) |              |             |                                             |
+| S1 (línea base) | 1.28*        | 1.28*       | Pendiente: se fija en la rama de la semana 2 |
+
+*La app es un solo proyecto, así que se midió `src/lib` completo con Vitest 5.0.5 (líneas). La medición se hizo al montar Vitest, ya con tests unitarios de `swap.ts` (rama de la semana 2).
 
 ## Registro de vocero aleatorio
-
-El vocero escribe su respuesta **antes** de que el instructor llegue a la mesa; el instructor la verifica con una pregunta corta y anota el resultado.
 
 | Semana | Vocero | Capa preguntada | Respuesta escrita | Resultado (Alto / Medio / Bajo) |
 |--------|--------|-----------------|-------------------|---------------------------------|
 | S1     |        |                 |                   |                                 |
-'@
-[System.IO.File]::WriteAllText("$PWD\docs\matriz-rotacion.md", $txt)

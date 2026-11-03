@@ -102,7 +102,6 @@ export type Offer = {
   swapTitle?: string | null;
   buyerName?: string | null;
   sellerName?: string | null;
-  /** Contacto de la otra parte (solo útil cuando la oferta está aceptada). */
   counterpartName?: string | null;
   counterpartPhone?: string | null;
   counterpartWhatsapp?: string | null;
@@ -253,10 +252,7 @@ function mapVehicle(row: VehicleRow, favoriteIds?: Set<number>): Vehicle {
   };
 }
 
-/** Días de vigencia por defecto de un anuncio activo. */
 export const LISTING_ACTIVE_DAYS = 30;
-
-/** Máximo de reactivaciones gratuitas (después de la 1ª caducidad). */
 export const FREE_REACTIVATIONS = 1;
 
 async function pauseInactiveVehicles(sql: Awaited<ReturnType<typeof getSql>>) {
@@ -270,7 +266,6 @@ async function pauseInactiveVehicles(sql: Awaited<ReturnType<typeof getSql>>) {
         and last_activity_at < now() - (${LISTING_ACTIVE_DAYS} * interval '1 day')
     `;
   } catch (err) {
-    // Si la migración 0004 aún no está en esta base, no tumbar toda la app
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("last_activity_at") || msg.includes("paused_reason")) {
       console.warn("[market] pauseInactiveVehicles omitido (migración 0004 pendiente):", msg);
@@ -399,7 +394,6 @@ async function requireActiveAccount(userId: string) {
   }
 }
 
-/** Correo confirmado en la tabla user de Better Auth (obligatorio para operar). */
 async function requireVerifiedEmail(userId: string) {
   const sql = await getSql();
   const rows = await sql<{ verified: boolean | number | null }>`
@@ -513,82 +507,88 @@ const VEHICLE_SELECT = `
   p.email as seller_email
 `;
 
+// ─── Handlers testables (capa BD) ───────────────────────────────────────────
+
+export async function listVehiclesHandler(data: z.infer<typeof listFilter>) {
+  const sql = await getSql();
+  await pauseInactiveVehicles(sql);
+  const where: string[] = ["v.status = 'activo'"];
+  const params: unknown[] = [];
+  const add = (clause: string, value: unknown) => {
+    params.push(value);
+    where.push(clause.replaceAll("?", `$${params.length}`));
+  };
+  const q = data.q?.trim();
+  if (q) {
+    params.push(`%${q}%`);
+    const i = params.length;
+    where.push(
+      `(v.title ilike $${i} or v.brand ilike $${i} or v.model ilike $${i} or v.city ilike $${i})`,
+    );
+  }
+  if (data.brand) add("v.brand = ?", data.brand);
+  if (data.bodyType) add("v.body_type = ?", data.bodyType);
+  if (data.city) add("v.city = ?", data.city);
+  if (data.fuel) add("v.fuel = ?", data.fuel);
+  if (data.minPrice != null) add("v.price >= ?", data.minPrice);
+  if (data.maxPrice != null) add("v.price <= ?", data.maxPrice);
+  if (data.yearMin != null) add("v.year >= ?", data.yearMin);
+  if (data.yearMax != null) add("v.year <= ?", data.yearMax);
+  if (data.listingType) {
+    params.push(data.listingType);
+    const i = params.length;
+    where.push(`(v.listing_type = $${i} or v.listing_type = 'ambos')`);
+  }
+  if (data.verifiedOnly) {
+    where.push(`p.verification_status = 'verificado'`);
+  }
+  const rows = await sql.query<VehicleRow>(
+    `select ${VEHICLE_SELECT}
+     from vehicles v
+     left join profiles p on p.user_id = v.user_id
+     where ${where.join(" and ")}
+     order by v.created_at desc`,
+    params,
+  );
+  return rows.map((r) => mapVehicle(r));
+}
+
 export const listVehicles = createServerFn({ method: "GET" })
   .validator(listFilter)
-  .handler(async ({ data }) => {
-    const sql = await getSql();
-    await pauseInactiveVehicles(sql);
-    const where: string[] = ["v.status = 'activo'"];
-    const params: unknown[] = [];
-    const add = (clause: string, value: unknown) => {
-      params.push(value);
-      where.push(clause.replaceAll("?", `$${params.length}`));
-    };
-    const q = data.q?.trim();
-    if (q) {
-      params.push(`%${q}%`);
-      const i = params.length;
-      where.push(
-        `(v.title ilike $${i} or v.brand ilike $${i} or v.model ilike $${i} or v.city ilike $${i})`,
-      );
-    }
-    if (data.brand) add("v.brand = ?", data.brand);
-    if (data.bodyType) add("v.body_type = ?", data.bodyType);
-    if (data.city) add("v.city = ?", data.city);
-    if (data.fuel) add("v.fuel = ?", data.fuel);
-    if (data.minPrice != null) add("v.price >= ?", data.minPrice);
-    if (data.maxPrice != null) add("v.price <= ?", data.maxPrice);
-    if (data.yearMin != null) add("v.year >= ?", data.yearMin);
-    if (data.yearMax != null) add("v.year <= ?", data.yearMax);
-    if (data.listingType) {
-      params.push(data.listingType);
-      const i = params.length;
-      where.push(`(v.listing_type = $${i} or v.listing_type = 'ambos')`);
-    }
-    if (data.verifiedOnly) {
-      where.push(`p.verification_status = 'verificado'`);
-    }
-    const rows = await sql.query<VehicleRow>(
-      `select ${VEHICLE_SELECT}
-       from vehicles v
-       left join profiles p on p.user_id = v.user_id
-       where ${where.join(" and ")}
-       order by v.created_at desc`,
-      params,
-    );
-    return rows.map((r) => mapVehicle(r));
-  });
+  .handler(async ({ data }) => listVehiclesHandler(data));
+
+export async function getVehicleHandler(data: { id: number }) {
+  const sql = await getSql();
+  await pauseInactiveVehicles(sql);
+  const rows = await sql.query<VehicleRow>(
+    `select ${VEHICLE_SELECT}
+     from vehicles v
+     left join profiles p on p.user_id = v.user_id
+     where v.id = $1`,
+    [data.id],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  if (row.status !== "activo") {
+    const uid = await currentSessionId();
+    const admin = uid ? await isAdminUser(uid) : false;
+    if (!uid || (uid !== row.user_id && !admin)) return null;
+  }
+  const vehicle = mapVehicle(row);
+  const uid = await currentSessionId();
+  if (uid && uid === row.user_id) {
+    const cnt = await sql<{ c: number }>`
+      select count(*)::int as c from offers
+      where vehicle_id = ${data.id} and status in ('pendiente','contraoferta')
+    `;
+    vehicle.activeOffersCount = cnt[0]?.c ?? 0;
+  }
+  return vehicle;
+}
 
 export const getVehicle = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.number() }))
-  .handler(async ({ data }) => {
-    const sql = await getSql();
-    await pauseInactiveVehicles(sql);
-    const rows = await sql.query<VehicleRow>(
-      `select ${VEHICLE_SELECT}
-       from vehicles v
-       left join profiles p on p.user_id = v.user_id
-       where v.id = $1`,
-      [data.id],
-    );
-    const row = rows[0];
-    if (!row) return null;
-    if (row.status !== "activo") {
-      const uid = await currentSessionId();
-      const admin = uid ? await isAdminUser(uid) : false;
-      if (!uid || (uid !== row.user_id && !admin)) return null;
-    }
-    const vehicle = mapVehicle(row);
-    const uid = await currentSessionId();
-    if (uid && uid === row.user_id) {
-      const cnt = await sql<{ c: number }>`
-        select count(*)::int as c from offers
-        where vehicle_id = ${data.id} and status in ('pendiente','contraoferta')
-      `;
-      vehicle.activeOffersCount = cnt[0]?.c ?? 0;
-    }
-    return vehicle;
-  });
+  .handler(async ({ data }) => getVehicleHandler(data));
 
 export const featuredVehicles = createServerFn({ method: "GET" }).handler(async () => {
   const sql = await getSql();
@@ -703,53 +703,60 @@ export const submitVerification = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export async function createVehicleHandler(
+  context: { userId: string },
+  data: z.infer<typeof vehicleInput>,
+) {
+  await requireActiveAccount(context.userId);
+  await requireVerifiedEmail(context.userId);
+  const sql = await getSql();
+  const profile = await sql<{ role: string; verification_status: string }>`
+    select role, verification_status from profiles where user_id = ${context.userId}
+  `;
+  const verified =
+    profile[0]?.role === "admin" || profile[0]?.verification_status === "verificado";
+  const status = verified ? "activo" : "pendiente_revision";
+  const images = data.images.slice(0, 6);
+  const prefs = data.listingType === "venta" ? { any: true } : (data.swapPrefs ?? { any: true });
+  const showWhatsapp = data.showWhatsapp !== false;
+  const acceptLower = data.acceptLowerOffers !== false;
+  const minPercent =
+    acceptLower && data.minOfferPercent != null && data.minOfferPercent > 0
+      ? data.minOfferPercent
+      : null;
+  const rows = await sql<{ id: number }>`
+    insert into vehicles (
+      user_id, title, brand, model, year, mileage, price, condition, fuel,
+      transmission, body_type, city, description, image_url, images, listing_type, status,
+      soat_expires, tecno_expires, taxes_current, taxes_detail, taxes_amount,
+      fines_current, fines_detail, fines_amount, swap_any, swap_prefs,
+      last_activity_at, show_whatsapp, accept_lower_offers, min_offer_percent,
+      free_reactivations_used
+    ) values (
+      ${context.userId}, ${data.title}, ${data.brand}, ${data.model}, ${data.year},
+      ${data.mileage}, ${data.price}, ${data.condition}, ${data.fuel},
+      ${data.transmission}, ${data.bodyType}, ${data.city}, ${data.description},
+      ${images[0]}, ${JSON.stringify(images)}, ${data.listingType}, ${status},
+      ${data.soatExpires || null}, ${data.tecnoExpires || null},
+      ${data.taxesCurrent}, ${data.taxesCurrent ? null : data.taxesDetail ?? null},
+      ${data.taxesCurrent ? 0 : data.taxesAmount ?? 0},
+      ${data.finesCurrent}, ${data.finesCurrent ? null : data.finesDetail ?? null},
+      ${data.finesCurrent ? 0 : data.finesAmount ?? 0},
+      ${Boolean(prefs.any)}, ${JSON.stringify(prefs)},
+      now(), ${showWhatsapp}, ${acceptLower}, ${minPercent},
+      0
+    )
+    returning id
+  `;
+  return { id: rows[0].id, status };
+}
+
 export const createVehicle = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(vehicleInput)
-  .handler(async ({ context, data }) => {
-    await requireActiveAccount(context.userId);
-    await requireVerifiedEmail(context.userId);
-    const sql = await getSql();
-    const profile = await sql<{ role: string; verification_status: string }>`
-      select role, verification_status from profiles where user_id = ${context.userId}
-    `;
-    const verified =
-      profile[0]?.role === "admin" || profile[0]?.verification_status === "verificado";
-    const status = verified ? "activo" : "pendiente_revision";
-    const images = data.images.slice(0, 6);
-    const prefs = data.listingType === "venta" ? { any: true } : (data.swapPrefs ?? { any: true });
-    const showWhatsapp = data.showWhatsapp !== false;
-    const acceptLower = data.acceptLowerOffers !== false;
-    const minPercent =
-      acceptLower && data.minOfferPercent != null && data.minOfferPercent > 0
-        ? data.minOfferPercent
-        : null;
-    const rows = await sql<{ id: number }>`
-      insert into vehicles (
-        user_id, title, brand, model, year, mileage, price, condition, fuel,
-        transmission, body_type, city, description, image_url, images, listing_type, status,
-        soat_expires, tecno_expires, taxes_current, taxes_detail, taxes_amount,
-        fines_current, fines_detail, fines_amount, swap_any, swap_prefs,
-        last_activity_at, show_whatsapp, accept_lower_offers, min_offer_percent,
-        free_reactivations_used
-      ) values (
-        ${context.userId}, ${data.title}, ${data.brand}, ${data.model}, ${data.year},
-        ${data.mileage}, ${data.price}, ${data.condition}, ${data.fuel},
-        ${data.transmission}, ${data.bodyType}, ${data.city}, ${data.description},
-        ${images[0]}, ${JSON.stringify(images)}, ${data.listingType}, ${status},
-        ${data.soatExpires || null}, ${data.tecnoExpires || null},
-        ${data.taxesCurrent}, ${data.taxesCurrent ? null : data.taxesDetail ?? null},
-        ${data.taxesCurrent ? 0 : data.taxesAmount ?? 0},
-        ${data.finesCurrent}, ${data.finesCurrent ? null : data.finesDetail ?? null},
-        ${data.finesCurrent ? 0 : data.finesAmount ?? 0},
-        ${Boolean(prefs.any)}, ${JSON.stringify(prefs)},
-        now(), ${showWhatsapp}, ${acceptLower}, ${minPercent},
-        0
-      )
-      returning id
-    `;
-    return { id: rows[0].id, status };
-  });
+  .handler(async ({ context, data }) =>
+    createVehicleHandler({ userId: context.userId }, data),
+  );
 
 export const listMyVehicles = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -789,7 +796,6 @@ export const updateVehicleStatus = createServerFn({ method: "POST" })
       throw new Error("Este anuncio sigue en revisión del administrador.");
     }
 
-    // Reactivar desde pausa por inactividad
     if (data.status === "activo" && current[0].status === "pausado") {
       const used = Number(current[0].free_reactivations_used ?? 0);
       if (current[0].paused_reason === "inactividad") {
@@ -805,7 +811,6 @@ export const updateVehicleStatus = createServerFn({ method: "POST" })
           `;
           return { ok: true, reactivated: true, free: true };
         }
-        // Ya usó la reactivación gratis → solicitar
         await sql`
           update vehicles
           set reactivation_requested_at = now()
@@ -818,7 +823,6 @@ export const updateVehicleStatus = createServerFn({ method: "POST" })
           message: "Solicitud enviada. Un administrador extenderá tu anuncio.",
         };
       }
-      // Pausa manual: reactivar y resetear actividad
       await sql`
         update vehicles
         set status = 'activo',
@@ -848,7 +852,6 @@ export const updateVehicleStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Solicitar reactivación explícita (cuando ya no hay reactivaciones gratis). */
 export const requestReactivation = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(z.object({ id: z.number() }))
@@ -943,6 +946,106 @@ export const isFavorite = createServerFn({ method: "GET" })
     return { favorite: (rows[0]?.c ?? 0) > 0 };
   });
 
+export async function createOfferHandler(
+  context: { userId: string },
+  data: {
+    vehicleId: number;
+    offerType: "compra" | "permuta";
+    amount?: number;
+    swapVehicleId?: number;
+    message?: string;
+  },
+) {
+  await requireActiveAccount(context.userId);
+  await requireVerifiedEmail(context.userId);
+  const sql = await getSql();
+  const vehicle = await sql<{
+    user_id: string;
+    listing_type: string;
+    status: string;
+    price: number;
+    swap_any: boolean | number | null;
+    swap_prefs: string | null;
+    accept_lower_offers: boolean | number | null;
+    min_offer_percent: number | null;
+  }>`
+    select user_id, listing_type, status, price, swap_any, swap_prefs,
+           accept_lower_offers, min_offer_percent
+    from vehicles where id = ${data.vehicleId}
+  `;
+  if (!vehicle[0] || vehicle[0].status !== "activo") {
+    throw new Error("El anuncio no está disponible.");
+  }
+  if (vehicle[0].user_id === context.userId) {
+    throw new Error("No puedes ofertar sobre tu propio anuncio.");
+  }
+  const listing = vehicle[0].listing_type;
+  if (data.offerType === "compra" && listing === "permuta") {
+    throw new Error("Este anuncio solo acepta permuta.");
+  }
+  if (data.offerType === "permuta" && listing === "venta") {
+    throw new Error("Este anuncio solo está en venta.");
+  }
+  if (data.offerType === "compra") {
+    const amount = data.amount;
+    if (amount == null || amount <= 0) {
+      throw new Error("Indica un monto válido para la oferta de compra.");
+    }
+    const price = Number(vehicle[0].price);
+    if (amount > price) {
+      throw new Error("La oferta no puede ser mayor al precio publicado.");
+    }
+    const acceptLower =
+      vehicle[0].accept_lower_offers == null
+        ? true
+        : Boolean(vehicle[0].accept_lower_offers);
+    if (!acceptLower && amount < price) {
+      throw new Error("El vendedor solo acepta el precio publicado (no ofertas menores).");
+    }
+    const minPct = vehicle[0].min_offer_percent;
+    if (acceptLower && minPct != null && minPct > 0) {
+      const floor = Math.ceil((price * Number(minPct)) / 100);
+      if (amount < floor) {
+        throw new Error(
+          `La oferta mínima permitida es ${floor.toLocaleString("es-CO")} COP (${minPct}% del precio).`,
+        );
+      }
+    }
+  }
+  if (data.offerType === "permuta") {
+    if (!data.swapVehicleId) throw new Error("Elige un vehículo para permutar.");
+    const mine = await sql.query<VehicleRow>(
+      `select ${VEHICLE_SELECT}
+       from vehicles v
+       left join profiles p on p.user_id = v.user_id
+       where v.id = $1 and v.user_id = $2 and v.status = 'activo'`,
+      [data.swapVehicleId, context.userId],
+    );
+    if (!mine[0]) throw new Error("El vehículo de permuta no es tuyo o no está activo.");
+  }
+  const rows = await sql<{ id: number }>`
+    insert into offers (vehicle_id, buyer_id, offer_type, amount, swap_vehicle_id, message, status, last_actor_id)
+    values (
+      ${data.vehicleId}, ${context.userId}, ${data.offerType},
+      ${data.amount ?? null}, ${data.swapVehicleId ?? null}, ${data.message ?? null},
+      'pendiente', ${context.userId}
+    )
+    returning id
+  `;
+  await sql`
+    insert into offer_events (offer_id, actor_id, action, amount, swap_vehicle_id, message)
+    values (
+      ${rows[0].id}, ${context.userId}, 'oferta',
+      ${data.amount ?? null}, ${data.swapVehicleId ?? null}, ${data.message ?? null}
+    )
+  `;
+  await sql`
+    update vehicles set last_activity_at = now()
+    where id = ${data.vehicleId} and status = 'activo'
+  `;
+  return { id: rows[0].id };
+}
+
 export const createOffer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(
@@ -954,96 +1057,11 @@ export const createOffer = createServerFn({ method: "POST" })
       message: z.string().max(800).optional(),
     }),
   )
-  .handler(async ({ context, data }) => {
-    await requireActiveAccount(context.userId);
-    await requireVerifiedEmail(context.userId);
-    const sql = await getSql();
-    const vehicle = await sql<{
-      user_id: string;
-      listing_type: string;
-      status: string;
-      price: number;
-      swap_any: boolean | number | null;
-      swap_prefs: string | null;
-      accept_lower_offers: boolean | number | null;
-      min_offer_percent: number | null;
-    }>`
-      select user_id, listing_type, status, price, swap_any, swap_prefs,
-             accept_lower_offers, min_offer_percent
-      from vehicles where id = ${data.vehicleId}
-    `;
-    if (!vehicle[0] || vehicle[0].status !== "activo") {
-      throw new Error("El anuncio no está disponible.");
-    }
-    if (vehicle[0].user_id === context.userId) {
-      throw new Error("No puedes ofertar sobre tu propio anuncio.");
-    }
-    const listing = vehicle[0].listing_type;
-    if (data.offerType === "compra" && listing === "permuta") {
-      throw new Error("Este anuncio solo acepta permuta.");
-    }
-    if (data.offerType === "permuta" && listing === "venta") {
-      throw new Error("Este anuncio solo está en venta.");
-    }
-    if (data.offerType === "compra") {
-      const amount = data.amount;
-      if (amount == null || amount <= 0) {
-        throw new Error("Indica un monto válido para la oferta de compra.");
-      }
-      const price = Number(vehicle[0].price);
-      if (amount > price) {
-        throw new Error("La oferta no puede ser mayor al precio publicado.");
-      }
-      const acceptLower = vehicle[0].accept_lower_offers == null
-        ? true
-        : Boolean(vehicle[0].accept_lower_offers);
-      if (!acceptLower && amount < price) {
-        throw new Error("El vendedor solo acepta el precio publicado (no ofertas menores).");
-      }
-      const minPct = vehicle[0].min_offer_percent;
-      if (acceptLower && minPct != null && minPct > 0) {
-        const floor = Math.ceil((price * Number(minPct)) / 100);
-        if (amount < floor) {
-          throw new Error(
-            `La oferta mínima permitida es ${floor.toLocaleString("es-CO")} COP (${minPct}% del precio).`,
-          );
-        }
-      }
-    }
-    if (data.offerType === "permuta") {
-      if (!data.swapVehicleId) throw new Error("Elige un vehículo para permutar.");
-      const mine = await sql.query<VehicleRow>(
-        `select ${VEHICLE_SELECT}
-         from vehicles v
-         left join profiles p on p.user_id = v.user_id
-         where v.id = $1 and v.user_id = $2 and v.status = 'activo'`,
-        [data.swapVehicleId, context.userId],
-      );
-      if (!mine[0]) throw new Error("El vehículo de permuta no es tuyo o no está activo.");
-    }
-    const rows = await sql<{ id: number }>`
-      insert into offers (vehicle_id, buyer_id, offer_type, amount, swap_vehicle_id, message, status, last_actor_id)
-      values (
-        ${data.vehicleId}, ${context.userId}, ${data.offerType},
-        ${data.amount ?? null}, ${data.swapVehicleId ?? null}, ${data.message ?? null},
-        'pendiente', ${context.userId}
-      )
-      returning id
-    `;
-    await sql`
-      insert into offer_events (offer_id, actor_id, action, amount, swap_vehicle_id, message)
-      values (
-        ${rows[0].id}, ${context.userId}, 'oferta',
-        ${data.amount ?? null}, ${data.swapVehicleId ?? null}, ${data.message ?? null}
-      )
-    `;
-    // Actividad del anuncio al recibir oferta
-    await sql`
-      update vehicles set last_activity_at = now()
-      where id = ${data.vehicleId} and status = 'activo'
-    `;
-    return { id: rows[0].id };
-  });
+  .handler(async ({ context, data }) =>
+    createOfferHandler({ userId: context.userId }, data),
+  );
+
+// ─── Resto del archivo (sin cambios de lógica) ──────────────────────────────
 
 type OfferRow = {
   id: number;
@@ -1305,7 +1323,6 @@ export const respondOffer = createServerFn({ method: "POST" })
         where vehicle_id = ${offer.vehicle_id} and id <> ${data.id}
           and status in ('pendiente','contraoferta')
       `;
-      // Snapshot del negocio para el admin
       const names = await sql<{ seller_name: string | null; buyer_name: string | null }>`
         select
           (select display_name from profiles where user_id = ${offer.owner_id}) as seller_name,
@@ -1802,7 +1819,6 @@ export const adminDeleteContact = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 export const adminListDeals = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -1850,7 +1866,6 @@ export const adminListDeals = createServerFn({ method: "GET" })
     );
   });
 
-/** Admin: extender / reactivar un anuncio eligiendo los días. */
 export const adminExtendListing = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(
@@ -1872,9 +1887,6 @@ export const adminExtendListing = createServerFn({ method: "POST" })
           last_activity_at = now() + ((${data.days} - ${LISTING_ACTIVE_DAYS}) * interval '1 day')
       where id = ${data.id}
     `;
-    // last_activity_at = now() + (days - 30) hace que quede activo exactamente `days` días
-    // desde ahora, porque pauseInactiveVehicles corta a 30 días desde last_activity_at.
-    // Si days == 30, last_activity_at = now(). Si days == 60, last_activity_at = now()+30d.
     return { ok: true, days: data.days };
   });
 

@@ -15,7 +15,7 @@ function Recuperar() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setBusy(te);
+    setBusy(true);
     try {
       const redirectTo =
         typeof window !== "undefined"

@@ -5,6 +5,7 @@ import { SiteShell } from "@/components/site-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/input";
+import { onPhoneInput, sanitizePhone, isValidPhone } from "@/lib/input-rules";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { authClient } from "@/lib/auth/client";
@@ -63,8 +64,12 @@ function Perfil() {
         data: {
           firstName: String(fd.get("firstName")),
           lastName: String(fd.get("lastName")),
-          phone: String(fd.get("phone")),
-          whatsapp: String(fd.get("whatsapp") || "") || undefined,
+          phone: (() => {
+            const p = sanitizePhone(String(fd.get("phone") ?? ""));
+            if (!isValidPhone(p, 7)) throw new Error("Teléfono inválido: solo números, mínimo 7 dígitos.");
+            return p;
+          })(),
+          whatsapp: sanitizePhone(String(fd.get("whatsapp") || "")) || undefined,
           city: String(fd.get("city")),
           address: String(fd.get("address") || "") || undefined,
           email: String(fd.get("email") || "") || undefined,
@@ -221,10 +226,24 @@ function Perfil() {
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Teléfono">
-                  <Input name="phone" defaultValue={profile.phone ?? ""} required minLength={7} />
+                  <Input
+                    name="phone"
+                    type="tel"
+                    inputMode="tel"
+                    defaultValue={profile.phone ?? ""}
+                    required
+                    minLength={7}
+                    onInput={onPhoneInput}
+                  />
                 </Field>
                 <Field label="WhatsApp">
-                  <Input name="whatsapp" defaultValue={profile.whatsapp ?? profile.phone ?? ""} />
+                  <Input
+                    name="whatsapp"
+                    type="tel"
+                    inputMode="tel"
+                    defaultValue={profile.whatsapp ?? profile.phone ?? ""}
+                    onInput={onPhoneInput}
+                  />
                 </Field>
               </div>
               <Field label="Ciudad">
@@ -248,7 +267,15 @@ function Perfil() {
                   </Select>
                 </Field>
                 <Field label="Número de documento">
-                  <Input name="documentNumber" defaultValue={profile.documentNumber ?? ""} />
+                  <Input
+                    name="documentNumber"
+                    inputMode="numeric"
+                    defaultValue={profile.documentNumber ?? ""}
+                    onInput={(e) => {
+                      const t = e.currentTarget;
+                      t.value = t.value.replace(/[^0-9A-Za-z-]/g, "");
+                    }}
+                  />
                 </Field>
               </div>
               <Button type="submit" disabled={busy || disabled}>

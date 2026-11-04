@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/input";
 import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
 import { CITIES, DOC_TYPES } from "@/lib/format";
+import { sanitizePhone } from "@/lib/input-rules";
 import { getMyProfile } from "@/lib/market";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +48,7 @@ function Login() {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [city, setCity] = useState(CITIES[0] ?? "Bogotá");
+  const [city, setCity] = useState<string>(CITIES[0] ?? "Bogotá");
   const [address, setAddress] = useState("");
   const [documentType, setDocumentType] = useState("CC");
   const [documentNumber, setDocumentNumber] = useState("");
@@ -317,7 +318,7 @@ function Login() {
                 <Field label="Teléfono">
                   <Input
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(sanitizePhone(e.target.value))}
                     required
                     minLength={7}
                     autoComplete="tel"
@@ -326,7 +327,7 @@ function Login() {
                 <Field label="WhatsApp">
                   <Input
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
+                    onChange={(e) => setWhatsapp(sanitizePhone(e.target.value))}
                     placeholder="Si es distinto al teléfono"
                   />
                 </Field>
@@ -334,7 +335,9 @@ function Login() {
               <Field label="Ciudad">
                 <Select value={city} onChange={(e) => setCity(e.target.value)}>
                   {CITIES.map((c) => (
-                    <option key={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </Select>
               </Field>

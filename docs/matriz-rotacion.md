@@ -1,6 +1,6 @@
 # Matriz de rotación de capas
 
-**Grupo**: AutoMarketPlus · **Ficha**:  · **Stack**: React (TanStack Start) + PostgreSQL
+**Grupo**: AutoMarketPlus · **Ficha**: (número de ficha) · **Stack**: React (TanStack Start) + PostgreSQL
 
 Capas: **Front** (React) · **API** (backend) · **BD** (integración) · **E2E** (Playwright)
 
@@ -14,14 +14,16 @@ Reglas:
 |-----------------------------|-----|----|----|----|----|----|----|----|----|
 | @AndresXweb                 | E2E | Front |    |    |    |    |    |    |    |
 | @NicoSogamoso               | E2E | (completar: API / BD / E2E) |    |    |    |    |    |    |    |
-| @(PedroFigueroa)        | E2E | (completar) |    |    |    |    |    |    |    |
+| @(PedroFigueroa)            | E2E | (completar) |    |    |    |    |    |    |    |
 
 ## Cobertura semanal
 
 | Semana          | Frontend (%) | Backend (%) | Umbral configurado para la semana siguiente |
 |-----------------|--------------|-------------|---------------------------------------------|
-| S1 (línea base) | ~1.3 (src/lib completo, sin umbral) | n/a (monolito) | 0 (medición inicial) |
+| S1 (línea base) | 1.28* (src/lib completo, sin umbral) | n/a (monolito) | 0 (medición inicial) |
 | S2              | (anotar tras `npm run test:cov`, módulos puros) | n/a | 30 |
+
+*La app es un solo proyecto, así que se midió `src/lib` completo con Vitest 5.0.5 (líneas). La medición se hizo al montar Vitest, ya con tests unitarios de `swap.ts` (rama de la semana 2).
 
 Notas S2:
 - Cobertura unitaria sobre lógica pura: `swap.ts`, `format.ts`, `images.ts`, `utils.ts`.

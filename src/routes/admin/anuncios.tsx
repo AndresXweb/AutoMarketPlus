@@ -237,12 +237,16 @@ function Anuncios() {
               ))}
               <Button
                 size="sm"
-                variant={v.status === "rechazado" ? "default" : "danger"}
-                disabled={busy}
-                onClick={() => openReject(v.id)}
-              >
-                Rechazar
-              </Button>
+              {v.status !== "rechazado" && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={busy}
+                  onClick={() => openReject(v.id)}
+                >
+                  Rechazar
+                </Button>
+              )}
             </div>
           </li>
         ))}

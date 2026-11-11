@@ -15,6 +15,7 @@ export default defineConfig({
         'src/lib/format.ts',
         'src/lib/images.ts',
         'src/lib/utils.ts',
+        'src/lib/market-rules.ts',
       ],
       exclude: ['src/lib/**/*.test.ts', 'src/lib/**/*.spec.ts', 'src/lib/**/types.ts'],
       reporter: ['text', 'html'],

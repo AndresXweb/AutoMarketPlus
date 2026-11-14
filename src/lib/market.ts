@@ -30,6 +30,7 @@ export type Vehicle = {
   lastActivityAt?: string | null;
   pausedReason?: string | null;
   rejectionNote?: string | null;
+  featured?: boolean;
   freeReactivationsUsed?: number;
   reactivationRequestedAt?: string | null;
   showWhatsapp?: boolean;
@@ -166,6 +167,7 @@ type VehicleRow = {
   last_activity_at?: string | null;
   paused_reason?: string | null;
   rejection_note?: string | null;
+  featured?: boolean | number | null;
   free_reactivations_used?: number | null;
   reactivation_requested_at?: string | null;
   show_whatsapp?: boolean | number | null;
@@ -219,6 +221,7 @@ function mapVehicle(row: VehicleRow, favoriteIds?: Set<number>): Vehicle {
     lastActivityAt: row.last_activity_at ? String(row.last_activity_at) : null,
     pausedReason: row.paused_reason ?? null,
     rejectionNote: row.rejection_note ?? null,
+    featured: asBool(row.featured, false),
     freeReactivationsUsed: Number(row.free_reactivations_used ?? 0),
     reactivationRequestedAt: row.reactivation_requested_at
       ? String(row.reactivation_requested_at)
@@ -598,8 +601,23 @@ export const featuredVehicles = createServerFn({ method: "GET" }).handler(async 
      from vehicles v
      left join profiles p on p.user_id = v.user_id
      where v.status = 'activo'
-     order by v.created_at desc
+     order by v.featured desc, v.featured_at desc nulls last, v.created_at desc
      limit 6`,
+    [],
+  );
+  return rows.map((r) => mapVehicle(r));
+});
+
+/** Solo los anuncios activos que el administrador marcó como destacados. */
+export const listFeaturedVehicles = createServerFn({ method: "GET" }).handler(async () => {
+  const sql = await getSql();
+  await pauseInactiveVehicles(sql);
+  const rows = await sql.query<VehicleRow>(
+    `select ${VEHICLE_SELECT}
+     from vehicles v
+     left join profiles p on p.user_id = v.user_id
+     where v.status = 'activo' and v.featured = true
+     order by v.featured_at desc nulls last, v.created_at desc`,
     [],
   );
   return rows.map((r) => mapVehicle(r));
@@ -1727,6 +1745,14 @@ export const adminSetVehicleStatus = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await requireAdmin(context.userId);
     const sql = await getSql();
+    const existing = await sql<{ status: string }>`
+      select status from vehicles where id = ${data.id}
+    `;
+    if (!existing[0]) throw new Error("Anuncio no encontrado.");
+    // Un anuncio rechazado queda cerrado: no se puede rechazar de nuevo ni cambiar su estado.
+    if (existing[0].status === "rechazado") {
+      throw new Error("Este anuncio ya fue rechazado y no admite más cambios.");
+    }
     if (data.status === "activo") {
       await sql`
         update vehicles
@@ -1748,12 +1774,34 @@ export const adminSetVehicleStatus = createServerFn({ method: "POST" })
       await sql`
         update vehicles
         set status = 'rechazado',
-            rejection_note = ${note}
-        where id = ${data.id}
+            rejection_note = ${note},
+            featured = false,
+            featured_at = null
+        where id = ${data.id} and status <> 'rechazado'
       `;
     } else {
       await sql`update vehicles set status = ${data.status} where id = ${data.id}`;
     }
+    return { ok: true };
+  });
+
+export const adminSetFeatured = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ id: z.number(), featured: z.boolean() }))
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context.userId);
+    const sql = await getSql();
+    const rows = await sql<{ status: string }>`select status from vehicles where id = ${data.id}`;
+    if (!rows[0]) throw new Error("Anuncio no encontrado.");
+    if (data.featured && rows[0].status !== "activo") {
+      throw new Error("Solo se pueden destacar anuncios activos.");
+    }
+    await sql`
+      update vehicles
+      set featured = ${data.featured},
+          featured_at = ${data.featured ? new Date().toISOString() : null}
+      where id = ${data.id}
+    `;
     return { ok: true };
   });
 
@@ -1905,4 +1953,188 @@ export const adminListReactivationRequests = createServerFn({ method: "GET" })
       [],
     );
     return rows.map((r) => mapVehicle(r));
+  });
+
+// ─── Sugerencias de búsqueda ────────────────────────────────────────────────
+
+export type SearchSuggestion = {
+  kind: "marca" | "modelo" | "ciudad";
+  value: string;
+};
+
+export async function searchSuggestionsHandler(data: { q: string }): Promise<SearchSuggestion[]> {
+  const sql = await getSql();
+  const term = data.q.trim();
+  if (term.length < 1) {
+    // Sin texto: las marcas con más anuncios activos.
+    const rows = await sql.query<{ value: string }>(
+      `select brand as value from vehicles
+       where status = 'activo'
+       group by brand order by count(*) desc, brand asc limit 6`,
+      [],
+    );
+    return rows.map((r) => ({ kind: "marca" as const, value: r.value }));
+  }
+  const like = `%${term.replace(/[%_]/g, "")}%`;
+  const rows = await sql.query<{ kind: SearchSuggestion["kind"]; value: string }>(
+    `select kind, value from (
+       select 'marca' as kind, brand as value, count(*) as n
+         from vehicles where status = 'activo' and brand ilike $1 group by brand
+       union all
+       select 'modelo', trim(brand || ' ' || model), count(*)
+         from vehicles where status = 'activo' and (model ilike $1 or brand || ' ' || model ilike $1)
+         group by brand, model
+       union all
+       select 'ciudad', city, count(*)
+         from vehicles where status = 'activo' and city ilike $1 group by city
+     ) t
+     order by n desc, value asc
+     limit 8`,
+    [like],
+  );
+  return rows.map((r) => ({ kind: r.kind, value: r.value }));
+}
+
+export const searchSuggestions = createServerFn({ method: "GET" })
+  .validator(z.object({ q: z.string().max(60) }))
+  .handler(async ({ data }) => searchSuggestionsHandler(data));
+
+// ─── Solicitudes de búsqueda ────────────────────────────────────────────────
+
+export type SearchRequest = {
+  id: number;
+  userId: string;
+  brand: string | null;
+  model: string | null;
+  yearMin: number | null;
+  yearMax: number | null;
+  maxPrice: number | null;
+  city: string | null;
+  notes: string | null;
+  status: string;
+  createdAt: string;
+  matches: number;
+};
+
+type SearchRequestRow = {
+  id: number;
+  user_id: string;
+  brand: string | null;
+  model: string | null;
+  year_min: number | null;
+  year_max: number | null;
+  max_price: number | null;
+  city: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+  matches?: number | null;
+};
+
+function mapSearchRequest(r: SearchRequestRow): SearchRequest {
+  return {
+    id: r.id,
+    userId: r.user_id,
+    brand: r.brand,
+    model: r.model,
+    yearMin: r.year_min == null ? null : Number(r.year_min),
+    yearMax: r.year_max == null ? null : Number(r.year_max),
+    maxPrice: r.max_price == null ? null : Number(r.max_price),
+    city: r.city,
+    notes: r.notes,
+    status: r.status,
+    createdAt: String(r.created_at),
+    matches: Number(r.matches ?? 0),
+  };
+}
+
+const searchRequestInput = z
+  .object({
+    brand: z.string().trim().max(60).optional(),
+    model: z.string().trim().max(60).optional(),
+    yearMin: z.number().int().min(1950).max(2100).optional(),
+    yearMax: z.number().int().min(1950).max(2100).optional(),
+    maxPrice: z.number().min(0).max(100_000_000_000).optional(),
+    city: z.string().trim().max(60).optional(),
+    notes: z.string().trim().max(400).optional(),
+  })
+  .refine((d) => d.yearMin == null || d.yearMax == null || d.yearMin <= d.yearMax, {
+    message: "El año mínimo no puede ser mayor que el máximo.",
+  })
+  .refine((d) => Boolean(d.brand || d.model || d.city || d.maxPrice || d.yearMin || d.yearMax), {
+    message: "Indica al menos un criterio: marca, modelo, ciudad, año o precio.",
+  });
+
+export const createSearchRequest = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(searchRequestInput)
+  .handler(async ({ context, data }) => {
+    await requireActiveAccount(context.userId);
+    const sql = await getSql();
+    const open = await sql<{ c: number }>`
+      select count(*)::int as c from search_requests
+      where user_id = ${context.userId} and status = 'activa'
+    `;
+    if ((open[0]?.c ?? 0) >= 10) {
+      throw new Error("Ya tienes 10 solicitudes activas. Cierra alguna para crear otra.");
+    }
+    const rows = await sql<{ id: number }>`
+      insert into search_requests
+        (user_id, brand, model, year_min, year_max, max_price, city, notes)
+      values (
+        ${context.userId}, ${data.brand || null}, ${data.model || null},
+        ${data.yearMin ?? null}, ${data.yearMax ?? null}, ${data.maxPrice ?? null},
+        ${data.city || null}, ${data.notes || null}
+      )
+      returning id
+    `;
+    return { ok: true, id: rows[0]?.id };
+  });
+
+const MATCHES_SQL = `(
+  select count(*)::int from vehicles v
+  where v.status = 'activo'
+    and (r.brand is null or v.brand ilike r.brand)
+    and (r.model is null or v.model ilike '%' || r.model || '%')
+    and (r.city is null or v.city ilike r.city)
+    and (r.max_price is null or v.price <= r.max_price)
+    and (r.year_min is null or v.year >= r.year_min)
+    and (r.year_max is null or v.year <= r.year_max)
+) as matches`;
+
+export const listMySearchRequests = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    const rows = await sql.query<SearchRequestRow>(
+      `select r.*, ${MATCHES_SQL}
+       from search_requests r
+       where r.user_id = $1
+       order by case r.status when 'activa' then 0 else 1 end, r.created_at desc`,
+      [context.userId],
+    );
+    return rows.map(mapSearchRequest);
+  });
+
+export const closeSearchRequest = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ id: z.number() }))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const rows = await sql<{ id: number }>`
+      update search_requests set status = 'cerrada'
+      where id = ${data.id} and user_id = ${context.userId} and status = 'activa'
+      returning id
+    `;
+    if (!rows[0]) throw new Error("Solicitud no encontrada.");
+    return { ok: true };
+  });
+
+export const deleteSearchRequest = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ id: z.number() }))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await sql`delete from search_requests where id = ${data.id} and user_id = ${context.userId}`;
+    return { ok: true };
   });

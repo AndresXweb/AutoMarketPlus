@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as ContactoRouteImport } from './routes/contacto'
+import { Route as DestacadosRouteImport } from './routes/destacados'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MisAnunciosRouteImport } from './routes/mis-anuncios'
@@ -21,6 +22,7 @@ import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PublicarRouteImport } from './routes/publicar'
 import { Route as RecuperarRouteImport } from './routes/recuperar'
 import { Route as RestablecerRouteImport } from './routes/restablecer'
+import { Route as SolicitudesRouteImport } from './routes/solicitudes'
 import { Route as TerminosRouteImport } from './routes/terminos'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAnunciosRouteImport } from './routes/admin/anuncios'
@@ -49,6 +51,11 @@ const CatalogoRoute = CatalogoRouteImport.update({
 const ContactoRoute = ContactoRouteImport.update({
   id: '/contacto',
   path: '/contacto',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DestacadosRoute = DestacadosRouteImport.update({
+  id: '/destacados',
+  path: '/destacados',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FavoritosRoute = FavoritosRouteImport.update({
@@ -89,6 +96,11 @@ const RecuperarRoute = RecuperarRouteImport.update({
 const RestablecerRoute = RestablecerRouteImport.update({
   id: '/restablecer',
   path: '/restablecer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SolicitudesRoute = SolicitudesRouteImport.update({
+  id: '/solicitudes',
+  path: '/solicitudes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TerminosRoute = TerminosRouteImport.update({
@@ -142,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/catalogo': typeof CatalogoRoute
   '/contacto': typeof ContactoRoute
+  '/destacados': typeof DestacadosRoute
   '/favoritos': typeof FavoritosRoute
   '/login': typeof LoginRoute
   '/mis-anuncios': typeof MisAnunciosRoute
@@ -150,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/publicar': typeof PublicarRoute
   '/recuperar': typeof RecuperarRoute
   '/restablecer': typeof RestablecerRoute
+  '/solicitudes': typeof SolicitudesRoute
   '/terminos': typeof TerminosRoute
   '/admin/anuncios': typeof AdminAnunciosRoute
   '/admin/contactos': typeof AdminContactosRoute
@@ -164,6 +178,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/catalogo': typeof CatalogoRoute
   '/contacto': typeof ContactoRoute
+  '/destacados': typeof DestacadosRoute
   '/favoritos': typeof FavoritosRoute
   '/login': typeof LoginRoute
   '/mis-anuncios': typeof MisAnunciosRoute
@@ -172,6 +187,7 @@ export interface FileRoutesByTo {
   '/publicar': typeof PublicarRoute
   '/recuperar': typeof RecuperarRoute
   '/restablecer': typeof RestablecerRoute
+  '/solicitudes': typeof SolicitudesRoute
   '/terminos': typeof TerminosRoute
   '/admin/anuncios': typeof AdminAnunciosRoute
   '/admin/contactos': typeof AdminContactosRoute
@@ -188,6 +204,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/catalogo': typeof CatalogoRoute
   '/contacto': typeof ContactoRoute
+  '/destacados': typeof DestacadosRoute
   '/favoritos': typeof FavoritosRoute
   '/login': typeof LoginRoute
   '/mis-anuncios': typeof MisAnunciosRoute
@@ -196,6 +213,7 @@ export interface FileRoutesById {
   '/publicar': typeof PublicarRoute
   '/recuperar': typeof RecuperarRoute
   '/restablecer': typeof RestablecerRoute
+  '/solicitudes': typeof SolicitudesRoute
   '/terminos': typeof TerminosRoute
   '/admin/anuncios': typeof AdminAnunciosRoute
   '/admin/contactos': typeof AdminContactosRoute
@@ -213,6 +231,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/catalogo'
     | '/contacto'
+    | '/destacados'
     | '/favoritos'
     | '/login'
     | '/mis-anuncios'
@@ -221,6 +240,7 @@ export interface FileRouteTypes {
     | '/publicar'
     | '/recuperar'
     | '/restablecer'
+    | '/solicitudes'
     | '/terminos'
     | '/admin/anuncios'
     | '/admin/contactos'
@@ -235,6 +255,7 @@ export interface FileRouteTypes {
     | '/'
     | '/catalogo'
     | '/contacto'
+    | '/destacados'
     | '/favoritos'
     | '/login'
     | '/mis-anuncios'
@@ -243,6 +264,7 @@ export interface FileRouteTypes {
     | '/publicar'
     | '/recuperar'
     | '/restablecer'
+    | '/solicitudes'
     | '/terminos'
     | '/admin/anuncios'
     | '/admin/contactos'
@@ -258,6 +280,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/catalogo'
     | '/contacto'
+    | '/destacados'
     | '/favoritos'
     | '/login'
     | '/mis-anuncios'
@@ -266,6 +289,7 @@ export interface FileRouteTypes {
     | '/publicar'
     | '/recuperar'
     | '/restablecer'
+    | '/solicitudes'
     | '/terminos'
     | '/admin/anuncios'
     | '/admin/contactos'
@@ -282,6 +306,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   CatalogoRoute: typeof CatalogoRoute
   ContactoRoute: typeof ContactoRoute
+  DestacadosRoute: typeof DestacadosRoute
   FavoritosRoute: typeof FavoritosRoute
   LoginRoute: typeof LoginRoute
   MisAnunciosRoute: typeof MisAnunciosRoute
@@ -290,6 +315,7 @@ export interface RootRouteChildren {
   PublicarRoute: typeof PublicarRoute
   RecuperarRoute: typeof RecuperarRoute
   RestablecerRoute: typeof RestablecerRoute
+  SolicitudesRoute: typeof SolicitudesRoute
   TerminosRoute: typeof TerminosRoute
   VehiculoIdRoute: typeof VehiculoIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -323,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/contacto'
       fullPath: '/contacto'
       preLoaderRoute: typeof ContactoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/destacados': {
+      id: '/destacados'
+      path: '/destacados'
+      fullPath: '/destacados'
+      preLoaderRoute: typeof DestacadosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/favoritos': {
@@ -379,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/restablecer'
       fullPath: '/restablecer'
       preLoaderRoute: typeof RestablecerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/solicitudes': {
+      id: '/solicitudes'
+      path: '/solicitudes'
+      fullPath: '/solicitudes'
+      preLoaderRoute: typeof SolicitudesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terminos': {
@@ -472,6 +512,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   CatalogoRoute: CatalogoRoute,
   ContactoRoute: ContactoRoute,
+  DestacadosRoute: DestacadosRoute,
   FavoritosRoute: FavoritosRoute,
   LoginRoute: LoginRoute,
   MisAnunciosRoute: MisAnunciosRoute,
@@ -480,6 +521,7 @@ const rootRouteChildren: RootRouteChildren = {
   PublicarRoute: PublicarRoute,
   RecuperarRoute: RecuperarRoute,
   RestablecerRoute: RestablecerRoute,
+  SolicitudesRoute: SolicitudesRoute,
   TerminosRoute: TerminosRoute,
   VehiculoIdRoute: VehiculoIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

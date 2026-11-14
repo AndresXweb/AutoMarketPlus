@@ -9,6 +9,7 @@ import {
   adminExtendListing,
   adminListReactivationRequests,
   adminListVehicles,
+  adminSetFeatured,
   adminSetVehicleStatus,
   type Vehicle,
 } from "@/lib/market";
@@ -68,13 +69,31 @@ function Anuncios() {
     }
   }
 
+  async function toggleFeatured(v: Vehicle) {
+    setBusy(true);
+    try {
+      await adminSetFeatured({ data: { id: v.id, featured: !v.featured } });
+      toast.success(v.featured ? "Quitado de destacados." : "Anuncio destacado.");
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo actualizar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function openReject(id: number) {
+    const current = rows.find((r) => r.id === id);
+    if (current?.status === "rechazado") {
+      toast.error("Este anuncio ya fue rechazado.");
+      return;
+    }
     setRejectId(id);
     setRejectNote("");
   }
 
   function confirmReject() {
-    if (rejectId == null) return;
+    if (rejectId == null || busy) return;
     const note = rejectNote.trim();
     if (note.length < 10) {
       toast.error("El motivo debe tener al menos 10 caracteres.");
@@ -209,43 +228,55 @@ function Anuncios() {
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              {v.status === "pendiente_revision" && (
-                <Button
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => void setStatus(v.id, "activo")}
-                >
-                  Aprobar
-                </Button>
-              )}
-              {(
-                [
-                  ["activo", "Activo"],
-                  ["pausado", "Pausado"],
-                  ["vendido", "Vendido"],
-                ] as const
-              ).map(([s, label]) => (
-                <Button
-                  key={s}
-                  size="sm"
-                  variant={v.status === s ? "default" : "secondary"}
-                  disabled={busy}
-                  onClick={() => void setStatus(v.id, s)}
-                >
-                  {label}
-                </Button>
-              ))}
-              <Button
-                size="sm"
-              {v.status !== "rechazado" && (
-                <Button
-                  size="sm"
-                  variant="danger"
-                  disabled={busy}
-                  onClick={() => openReject(v.id)}
-                >
-                  Rechazar
-                </Button>
+              {v.status === "rechazado" ? (
+                <span className="text-xs text-muted">
+                  Anuncio rechazado. No admite más acciones.
+                </span>
+              ) : (
+                <>
+                  {v.status === "pendiente_revision" && (
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void setStatus(v.id, "activo")}
+                    >
+                      Aprobar
+                    </Button>
+                  )}
+                  {(
+                    [
+                      ["activo", "Activo"],
+                      ["pausado", "Pausado"],
+                      ["vendido", "Vendido"],
+                    ] as const
+                  ).map(([st, label]) => (
+                    <Button
+                      key={st}
+                      size="sm"
+                      variant={v.status === st ? "default" : "secondary"}
+                      disabled={busy}
+                      onClick={() => void setStatus(v.id, st)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => void toggleFeatured(v)}
+                  >
+                    {v.featured ? "Quitar destacado" : "Destacar"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    disabled={busy}
+                    onClick={() => openReject(v.id)}
+                  >
+                    Rechazar
+                  </Button>
+                </>
               )}
             </div>
           </li>

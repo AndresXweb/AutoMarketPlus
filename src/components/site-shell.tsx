@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { to: "/catalogo", label: "Catálogo" },
+  { to: "/destacados", label: "Destacados" },
   { to: "/contacto", label: "Contacto" },
 ];
 
@@ -101,6 +102,15 @@ export function SiteHeader() {
               Mis anuncios
             </Link>
             <Link
+              to="/solicitudes"
+              className={cn(
+                "text-sm font-medium transition-colors",
+                pathname.startsWith("/solicitudes") ? "text-fg" : "text-muted hover:text-fg",
+              )}
+            >
+              Solicitudes
+            </Link>
+            <Link
               to="/ofertas"
               className={cn(
                 "text-sm font-medium transition-colors",
@@ -161,6 +171,9 @@ export function SiteHeader() {
               <Link to="/mis-anuncios" className="rounded-md px-3 py-3 text-sm text-fg hover:bg-elevated">
                 Mis anuncios
               </Link>
+              <Link to="/solicitudes" className="rounded-md px-3 py-3 text-sm text-fg hover:bg-elevated">
+                Solicitudes de búsqueda
+              </Link>
               <Link to="/ofertas" className="rounded-md px-3 py-3 text-sm text-fg hover:bg-elevated">
                 Ofertas
               </Link>
@@ -207,6 +220,12 @@ export function SiteFooter() {
             <p className="font-medium text-fg">Mercado</p>
             <Link to="/catalogo" className="text-muted hover:text-fg">
               Catálogo
+            </Link>
+            <Link to="/destacados" className="text-muted hover:text-fg">
+              Destacados
+            </Link>
+            <Link to="/solicitudes" className="text-muted hover:text-fg">
+              Solicitud de búsqueda
             </Link>
             <Link to="/publicar" className="text-muted hover:text-fg">
               Publicar

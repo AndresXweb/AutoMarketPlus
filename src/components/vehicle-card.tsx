@@ -27,6 +27,7 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
         />
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+          {vehicle.featured && <Badge tone="accent">★ Destacado</Badge>}
           <Badge tone={listingTone}>{LISTING_LABEL[vehicle.listingType]}</Badge>
           {vehicle.sellerVerified && <VerifiedBadge />}
         </div>

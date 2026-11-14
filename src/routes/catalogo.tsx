@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Search } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { SiteShell } from "@/components/site-shell";
+import { SearchSuggestInput } from "@/components/search-suggest-input";
 import { VehicleCard } from "@/components/vehicle-card";
 import { Input, Select } from "@/components/ui/input";
 import { BRANDS, CITIES } from "@/lib/format";
@@ -87,14 +87,11 @@ function Catalogo() {
         </p>
 
         <div className="mt-8 grid gap-3 rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] md:grid-cols-6">
-          <div className="relative md:col-span-2">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-subtle" />
-            <Input
-              className="pl-9"
-              placeholder="Marca, línea o ciudad"
+          <div className="md:col-span-2">
+            <SearchSuggestInput
               value={q}
-              onChange={(e) => setQ(e.target.value)}
-              suppressHydrationWarning
+              onChange={setQ}
+              placeholder="Marca, línea o ciudad"
             />
           </div>
           <Select value={brand} onChange={(e) => setBrand(e.target.value)}>
@@ -175,7 +172,12 @@ function Catalogo() {
         </p>
 
         {!filterError && items.length === 0 ? (
-          <p className="mt-16 text-center text-sm text-muted">No hay vehículos con esos filtros.</p>
+          <div className="mt-16 text-center">
+            <p className="text-sm text-muted">No hay vehículos con esos filtros.</p>
+            <Link to="/solicitudes" className="mt-3 inline-block text-sm text-accent hover:underline">
+              Crear una solicitud de búsqueda y te avisamos cuando haya coincidencias
+            </Link>
+          </div>
         ) : !filterError ? (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((v) => (

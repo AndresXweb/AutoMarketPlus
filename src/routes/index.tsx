@@ -126,8 +126,8 @@ function Home() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Selección</p>
             <h2 className="mt-2 font-display text-3xl font-semibold">Destacados</h2>
           </div>
-          <Link to="/catalogo" className="text-sm text-muted hover:text-accent">
-            Ver todos
+          <Link to="/destacados" className="text-sm text-muted hover:text-accent">
+            Ver destacados
           </Link>
         </div>
         {vehicles.length === 0 ? (

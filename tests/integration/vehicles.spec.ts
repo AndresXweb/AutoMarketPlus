@@ -69,9 +69,12 @@ describe.skipIf(!url)('BD real: tabla vehicles', () => {
     await expect(insertar({ ...base, [columna]: 2_147_483_648 })).rejects.toMatchObject({ code: '22003' });
   });
 
-  it('HALLAZGO: la BD acepta valores sin sentido (precio negativo, año 0)', async () => {
-    const { rows } = await insertar({ ...base, price: -1, year: 0 });
-    expect(rows[0]).toMatchObject({ price: -1, year: 0 });
+  it.each([
+    { caso: 'precio negativo', fila: { price: -1 } },
+    { caso: 'año anterior a 1980', fila: { year: 0 } },
+    { caso: 'kilometraje negativo', fila: { mileage: -1 } },
+  ])('rechaza $caso (CHECK)', async ({ fila }) => {
+    await expect(insertar({ ...base, ...fila })).rejects.toMatchObject({ code: '23514' });
   });
 
   it('la limpieza deja la tabla vacía y reinicia los ids', async () => {

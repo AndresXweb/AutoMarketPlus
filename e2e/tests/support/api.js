@@ -1,46 +1,24 @@
 // e2e/tests/support/api.js
-const BASE = 'http://localhost:8080';
+/**
+ * Helpers para crear datos por API (mejor que UI cuando se pueda).
+ * Por ahora dejamos un placeholder; lo completamos cuando veamos
+ * los endpoints reales de Better Auth o de la app.
+ */
 
 /**
- * Crea un usuario de prueba (ajusta según tu endpoint real de Better Auth)
+ * Crea un usuario único (por ahora solo genera los datos).
+ * Más adelante se puede hacer un POST real a /api/auth/sign-up/email
  */
-export async function createUser(request, { email, password, name = 'Usuario Test' }) {
-  // Ajusta esta ruta según cómo esté implementado el registro en tu API
-  const response = await request.post(`${BASE}/api/auth/sign-up/email`, {
-    data: {
-      email,
-      password,
-      name,
-    },
-  });
-
-  return response;
-}
-
-/**
- * Inicia sesión y devuelve las cookies / token
- */
-export async function loginUser(request, { email, password }) {
-  const response = await request.post(`${BASE}/api/auth/sign-in/email`, {
-    data: {
-      email,
-      password,
-    },
-  });
-
-  return response;
-}
-
-/**
- * Crea un anuncio de prueba (ajusta el endpoint real)
- */
-export async function createListing(request, data, cookies = null) {
-  const headers = cookies ? { Cookie: cookies } : {};
-
-  const response = await request.post(`${BASE}/api/listings`, { // ← ajusta la ruta real
-    data,
-    headers,
-  });
-
-  return response;
+export function createUniqueUser(prefix = 'e2e') {
+  const ts = Date.now();
+  const rand = Math.floor(Math.random() * 9999);
+  return {
+    email: `${prefix}.${ts}.${rand}@example.com`,
+    password: 'TestPass123!',
+    name: `E2E User ${rand}`,
+    firstName: 'E2E',
+    lastName: `User${rand}`,
+    phone: `310${String(ts).slice(-7)}`,
+    documentNumber: String(ts).slice(-10),
+  };
 }

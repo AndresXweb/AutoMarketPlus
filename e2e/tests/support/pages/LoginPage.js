@@ -7,19 +7,28 @@ export class LoginPage {
 
   async goto() {
     await this.page.goto('/login');
-    await this.page.getByRole('textbox', { name: /correo/i }).waitFor({ state: 'visible' });
+    await this.page
+      .getByRole('heading', { name: /^Entrar$/i })
+      .waitFor({ state: 'visible' });
   }
 
+  // Solo pestañas (type=button) dentro de main — evita nav y submit
   get tabEntrar() {
-    return this.page.getByRole('button', { name: /^Entrar$/i });
+    return this.page
+      .locator('main')
+      .locator('button[type="button"]')
+      .filter({ hasText: /^Entrar$/i });
   }
 
   get tabCrear() {
-    return this.page.getByRole('button', { name: /Crear cuenta/i });
+    return this.page
+      .locator('main')
+      .locator('button[type="button"]')
+      .filter({ hasText: /^Crear cuenta$/i });
   }
 
   get email() {
-    return this.page.getByRole('textbox', { name: /correo/i });
+    return this.page.getByRole('textbox', { name: /^Correo$/i });
   }
 
   get password() {
@@ -31,15 +40,15 @@ export class LoginPage {
   }
 
   get firstName() {
-    return this.page.getByRole('textbox', { name: /Nombres/i });
+    return this.page.getByRole('textbox', { name: /^Nombres$/i });
   }
 
   get lastName() {
-    return this.page.getByRole('textbox', { name: /Apellidos/i });
+    return this.page.getByRole('textbox', { name: /^Apellidos$/i });
   }
 
   get phone() {
-    return this.page.getByRole('textbox', { name: /Teléfono/i });
+    return this.page.getByRole('textbox', { name: /^Teléfono$/i });
   }
 
   get documentNumber() {
@@ -47,32 +56,55 @@ export class LoginPage {
   }
 
   get terminosCheckbox() {
-    // Más resistente: busca el checkbox dentro del label de términos
-    return this.page.locator('label').filter({ hasText: /términos/i }).locator('input[type="checkbox"]');
+    return this.page
+      .locator('form label')
+      .filter({ hasText: /términos y condiciones/i })
+      .locator('input[type="checkbox"]');
   }
 
   get submitButton() {
-    return this.page.locator('form').getByRole('button', { name: /Entrar|Crear cuenta/i });
+    return this.page.locator('form button[type="submit"]');
   }
 
   get errorMessage() {
-    return this.page
-      .locator('p.text-danger')
-      .or(this.page.locator('.text-danger'))
-      .or(this.page.getByText(/incorrectos|inválid|error|falló|no se pudo|credenciales|coinciden|términos/i));
+    return this.page.locator('p.text-danger');
   }
 
   async switchToLogin() {
+    const onRegister = await this.page
+      .getByRole('heading', { name: /^Crear cuenta$/i })
+      .isVisible()
+      .catch(() => false);
+    if (!onRegister) return;
+
     await this.tabEntrar.click();
+    await this.page
+      .getByRole('heading', { name: /^Entrar$/i })
+      .waitFor({ state: 'visible', timeout: 10_000 });
   }
 
   async switchToRegister() {
-    await this.tabCrear.click();
-    await this.firstName.waitFor({ state: 'visible' });
+    await this.tabCrear.waitFor({ state: 'visible' });
+
+    // Reintento: el primer click a veces no aplica setMode en React
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await this.tabCrear.click();
+      try {
+        await this.page
+          .getByRole('heading', { name: /^Crear cuenta$/i })
+          .waitFor({ state: 'visible', timeout: 5_000 });
+        await this.firstName.waitFor({ state: 'visible', timeout: 3_000 });
+        return;
+      } catch {
+        if (attempt === 3) {
+          throw new Error('No se pudo cambiar a la pestaña Crear cuenta tras 3 intentos');
+        }
+      }
+    }
   }
 
   async login(email, password) {
-    await this.switchToLogin();
+    // goto() deja mode === "entrar"; no hace falta tocar pestañas
     await this.email.fill(email);
     await this.password.fill(password);
     await this.submitButton.click();

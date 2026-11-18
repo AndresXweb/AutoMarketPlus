@@ -1,3 +1,6 @@
 node_modules/
 test-results/
 playwright-report/
+echo .auth/ >> e2e/.gitignore
+echo playwright-report/ >> e2e/.gitignore
+echo test-results/ >> e2e/.gitignore

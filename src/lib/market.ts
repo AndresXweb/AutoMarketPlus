@@ -258,6 +258,43 @@ function mapVehicle(row: VehicleRow, favoriteIds?: Set<number>): Vehicle {
 export const LISTING_ACTIVE_DAYS = 30;
 export const FREE_REACTIVATIONS = 1;
 
+/**
+ * Decide si un anuncio pausado por inactividad se puede reactivar gratis.
+ */
+export function canFreeReactivate(params: {
+  pausedReason: string | null | undefined;
+  freeReactivationsUsed: number;
+}): { canFree: boolean; reason: "free" | "request" | "not_inactivity" } {
+  if (params.pausedReason !== "inactividad") {
+    return { canFree: false, reason: "not_inactivity" };
+  }
+  if (params.freeReactivationsUsed < FREE_REACTIVATIONS) {
+    return { canFree: true, reason: "free" };
+  }
+  return { canFree: false, reason: "request" };
+}
+
+/**
+ * Decide si un anuncio activo debe pausarse por inactividad.
+ * @param lastActivityAt - fecha de última actividad (ISO string o Date)
+ * @param now - fecha actual (inyectable para tests)
+ */
+export function shouldPauseForInactivity(params: {
+  lastActivityAt: string | Date | null | undefined;
+  now?: Date;
+}): boolean {
+  if (!params.lastActivityAt) return false;
+
+  const last = new Date(params.lastActivityAt);
+  if (Number.isNaN(last.getTime())) return false;
+
+  const current = params.now ?? new Date();
+  const diffMs = current.getTime() - last.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  return diffDays >= LISTING_ACTIVE_DAYS;
+}
+
 async function pauseInactiveVehicles(sql: Awaited<ReturnType<typeof getSql>>) {
   try {
     await sql`
@@ -814,21 +851,29 @@ export const updateVehicleStatus = createServerFn({ method: "POST" })
       throw new Error("Este anuncio sigue en revisión del administrador.");
     }
 
+    // Reactivar un anuncio pausado
     if (data.status === "activo" && current[0].status === "pausado") {
       const used = Number(current[0].free_reactivations_used ?? 0);
-      if (current[0].paused_reason === "inactividad") {
-        if (used < FREE_REACTIVATIONS) {
-          await sql`
-            update vehicles
-            set status = 'activo',
-                paused_reason = null,
-                last_activity_at = now(),
-                free_reactivations_used = ${used + 1},
-                reactivation_requested_at = null
-            where id = ${data.id} and user_id = ${context.userId}
-          `;
-          return { ok: true, reactivated: true, free: true };
-        }
+
+      const decision = canFreeReactivate({
+        pausedReason: current[0].paused_reason,
+        freeReactivationsUsed: used,
+      });
+
+      if (decision.canFree) {
+        await sql`
+          update vehicles
+          set status = 'activo',
+              paused_reason = null,
+              last_activity_at = now(),
+              free_reactivations_used = ${used + 1},
+              reactivation_requested_at = null
+          where id = ${data.id} and user_id = ${context.userId}
+        `;
+        return { ok: true, reactivated: true, free: true };
+      }
+
+      if (decision.reason === "request") {
         await sql`
           update vehicles
           set reactivation_requested_at = now()
@@ -841,6 +886,8 @@ export const updateVehicleStatus = createServerFn({ method: "POST" })
           message: "Solicitud enviada. Un administrador extenderá tu anuncio.",
         };
       }
+
+      // Pausado manual → reactivar normal
       await sql`
         update vehicles
         set status = 'activo',
@@ -852,6 +899,7 @@ export const updateVehicleStatus = createServerFn({ method: "POST" })
       return { ok: true };
     }
 
+    // Pausar
     if (data.status === "pausado") {
       await sql`
         update vehicles
@@ -862,11 +910,16 @@ export const updateVehicleStatus = createServerFn({ method: "POST" })
       return { ok: true };
     }
 
-    await sql`
-      update vehicles
-      set status = ${data.status}
-      where id = ${data.id} and user_id = ${context.userId}
-    `;
+    // Marcar como vendido
+    if (data.status === "vendido") {
+      await sql`
+        update vehicles
+        set status = 'vendido'
+        where id = ${data.id} and user_id = ${context.userId}
+      `;
+      return { ok: true };
+    }
+
     return { ok: true };
   });
 
@@ -1079,7 +1132,7 @@ export const createOffer = createServerFn({ method: "POST" })
     createOfferHandler({ userId: context.userId }, data),
   );
 
-// ─── Resto del archivo (sin cambios de lógica) ──────────────────────────────
+// ─── Resto del archivo ──────────────────────────────────────────────────────
 
 type OfferRow = {
   id: number;

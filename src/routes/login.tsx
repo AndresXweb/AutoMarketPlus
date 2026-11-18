@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { SiteShell } from "@/components/site-shell";
@@ -28,7 +28,6 @@ declare global {
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
-/** Recarga completa para que la cookie de sesión se refleje en el navbar. */
 async function goAfterLogin() {
   try {
     const profile = await getMyProfile();
@@ -41,22 +40,38 @@ async function goAfterLogin() {
 }
 
 function Login() {
-  const navigate = useNavigate();
   const [mode, setMode] = useState<"entrar" | "crear">("entrar");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [city, setCity] = useState<string>(CITIES[0] ?? "Bogotá");
   const [address, setAddress] = useState("");
-  const [documentType, setDocumentType] = useState<string>(DOC_TYPES[0]?.value ?? "CC");
+  const [documentType, setDocumentType] = useState("CC");
   const [documentNumber, setDocumentNumber] = useState("");
   const [aceptoTerminos, setAceptoTerminos] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [googleReady, setGoogleReady] = useState(false);
+
+  function clearForm() {
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+    setFirstName("");
+    setLastName("");
+    setPhone("");
+    setWhatsapp("");
+    setCity(CITIES[0] ?? "Bogotá");
+    setAddress("");
+    setDocumentType("CC");
+    setDocumentNumber("");
+    setAceptoTerminos(false);
+    setError(null);
+  }
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
@@ -100,7 +115,6 @@ function Login() {
             }
             toast.success("Sesión iniciada con Google.");
             await goAfterLogin();
-            return;
           } catch (err) {
             setError(err instanceof Error ? err.message : "Error con Google.");
           } finally {
@@ -118,7 +132,7 @@ function Login() {
     } catch {
       /* GSI no disponible */
     }
-  }, [googleReady, mode, aceptoTerminos, navigate]);
+  }, [googleReady, mode, aceptoTerminos]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -128,6 +142,14 @@ function Login() {
       if (mode === "crear") {
         if (!aceptoTerminos) {
           setError("Debes aceptar los términos y condiciones.");
+          return;
+        }
+        if (password !== confirmPassword) {
+          setError("Las contraseñas no coinciden. Confírmalas de nuevo.");
+          return;
+        }
+        if (password.length < 8) {
+          setError("La contraseña debe tener al menos 8 caracteres.");
           return;
         }
         const name = `${firstName} ${lastName}`.trim();
@@ -143,6 +165,7 @@ function Login() {
         toast.success(
           "Cuenta creada. Revisa tu correo para confirmarla antes de publicar u ofertar.",
         );
+        clearForm();
         setMode("entrar");
       } else {
         const res = await authClient.signIn.email({ email, password });
@@ -152,7 +175,6 @@ function Login() {
         }
         toast.success("Bienvenido.");
         await goAfterLogin();
-        return;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error de autenticación.");
@@ -273,11 +295,15 @@ function Login() {
                     value={documentType}
                     onChange={(e) => setDocumentType(e.target.value)}
                   >
-                    {DOC_TYPES.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
+                    {DOC_TYPES.map((d) => {
+                      const value = typeof d === "string" ? d : d.value;
+                      const label = typeof d === "string" ? d : d.label;
+                      return (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      );
+                    })}
                   </Select>
                 </Field>
                 <Field label="Número">
@@ -360,6 +386,19 @@ function Login() {
               autoComplete={mode === "crear" ? "new-password" : "current-password"}
             />
           </Field>
+          {mode === "crear" && (
+            <Field label="Confirmar contraseña">
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="Repite la contraseña"
+              />
+            </Field>
+          )}
           {mode === "entrar" && (
             <p className="text-sm">
               <Link to="/recuperar" className="text-accent underline">
@@ -372,6 +411,11 @@ function Login() {
             {busy ? "Espera…" : mode === "crear" ? "Crear cuenta" : "Entrar"}
           </Button>
         </form>
+
+        <p className="mt-6 text-xs leading-relaxed text-subtle">
+          Debes confirmar el correo para publicar u ofertar. La verificación de
+          cédula es adicional y la revisa un administrador.
+        </p>
       </main>
     </SiteShell>
   );

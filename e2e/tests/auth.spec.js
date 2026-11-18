@@ -16,6 +16,56 @@ test.describe('Auth – Login / Registro', () => {
     await expect(page.locator('form button[type="submit"]')).toBeVisible();
   });
 
+    test('doble clic en registro no debe crear dos cuentas', async ({ page }) => {
+    const user = uniqueUser('dbl');
+    const loginPage = new LoginPage(page);
+
+    // Contar POST de sign-up
+    let signUpCount = 0;
+    await page.route('**/api/auth/**', async (route) => {
+      const req = route.request();
+      const url = req.url();
+      const method = req.method();
+
+      // Ajusta si tu ruta real es otra (sign-up/email, signup, etc.)
+      const isSignUp =
+        method === 'POST' &&
+        (/sign-up/i.test(url) || /signup/i.test(url) || /register/i.test(url));
+
+      if (isSignUp) {
+        signUpCount += 1;
+        // Simula red lenta para que el doble clic alcance a salir
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+
+      await route.continue();
+    });
+
+    await loginPage.goto();
+    await loginPage.switchToRegister();
+
+    await loginPage.firstName.fill(user.firstName);
+    await loginPage.lastName.fill(user.lastName);
+    await loginPage.documentNumber.fill(user.documentNumber);
+    await loginPage.phone.fill(user.phone);
+    await loginPage.email.fill(user.email);
+    await loginPage.password.fill(user.password);
+    await loginPage.confirmPassword.fill(user.password);
+    await loginPage.terminosCheckbox.check();
+
+    // Doble clic en el submit
+    await loginPage.submitButton.dblclick();
+
+    // Espera a que termine la petición lenta
+    await expect(
+      page.getByText(/cuenta creada|revisa tu correo|contraseñas|error|incorrectos/i),
+    ).toBeVisible({ timeout: 20_000 });
+
+    // Evidencia del defecto (o de que está protegido)
+    // Ideal: 1 sola petición. Si sale 2, hay doble envío.
+    expect(signUpCount).toBeLessThanOrEqual(1);
+  });
+
   test('el enlace de recuperar contraseña lleva a /recuperar', async ({ page }) => {
     await page.goto('/login');
 

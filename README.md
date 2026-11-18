@@ -32,3 +32,16 @@ npm install
 cp .env.example .env
 # Configura DATABASE_URL y variables de auth en .env
 npm run dev
+```
+
+## Pruebas de integración (BD de pruebas)
+
+Los tests de integración usan una base PostgreSQL desechable en Docker (puerto 5433, BD `automarket_test`). Se saltan solos si no existe `DATABASE_URL` y se detienen si el nombre de la BD no termina en `_test`.
+
+```powershell
+docker compose up -d --wait
+$env:DATABASE_URL = "postgresql://automarket:automarket@localhost:5433/automarket_test"
+npm run db:migrate
+npm run test:integration
+docker compose down -v
+```

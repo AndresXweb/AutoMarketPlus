@@ -19,6 +19,7 @@
     "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/auth/gate-identity.test.ts",
     "lint": "eslint .",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -101,6 +102,6 @@
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.2.0",
-    "vitest": "^4.1.12"
+    "vitest": "5.0.5"
   }
 }

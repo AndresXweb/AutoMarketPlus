@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/input";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { LISTING_LABEL, STATUS_LABEL, formatCop } from "@/lib/format";
 import {
@@ -16,6 +17,24 @@ import {
 
 export const Route = createFileRoute("/admin/anuncios")({ component: Anuncios });
 
+const STATUS_FILTERS = [
+  { value: "todos", label: "Todos" },
+  { value: "pendiente_revision", label: "En revisión" },
+  { value: "activo", label: "Activos" },
+  { value: "pausado", label: "Pausados" },
+  { value: "vendido", label: "Vendidos" },
+  { value: "rechazado", label: "Rechazados" },
+] as const;
+
+type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
+
+function normalize(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function Anuncios() {
   const [rows, setRows] = useState<Vehicle[]>([]);
   const [requests, setRequests] = useState<Vehicle[]>([]);
@@ -23,6 +42,10 @@ function Anuncios() {
   const [rejectId, setRejectId] = useState<number | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [search, setSearch] = useState("");
+  const [listingFilter, setListingFilter] = useState("");
+  const [onlyFeatured, setOnlyFeatured] = useState(false);
 
   async function reload() {
     try {
@@ -43,6 +66,38 @@ function Anuncios() {
   }, []);
 
   const pending = rows.filter((v) => v.status === "pendiente_revision").length;
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { todos: rows.length };
+    for (const v of rows) c[v.status] = (c[v.status] ?? 0) + 1;
+    return c;
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    const term = normalize(search.trim());
+    return rows.filter((v) => {
+      if (statusFilter !== "todos" && v.status !== statusFilter) return false;
+      if (listingFilter && v.listingType !== listingFilter) return false;
+      if (onlyFeatured && !v.featured) return false;
+      if (term) {
+        const haystack = normalize(
+          [v.title, v.brand, v.model, v.city, v.sellerName ?? ""].join(" "),
+        );
+        if (!haystack.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [rows, statusFilter, listingFilter, onlyFeatured, search]);
+
+  const hasFilters =
+    statusFilter !== "todos" || search.trim() !== "" || listingFilter !== "" || onlyFeatured;
+
+  function clearFilters() {
+    setStatusFilter("todos");
+    setSearch("");
+    setListingFilter("");
+    setOnlyFeatured(false);
+  }
 
   async function setStatus(
     id: number,
@@ -194,8 +249,64 @@ function Anuncios() {
         </div>
       )}
 
+      <div className="mt-6 grid gap-3 rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filtrar por estado">
+          {STATUS_FILTERS.map((f) => (
+            <Button
+              key={f.value}
+              size="sm"
+              role="tab"
+              aria-selected={statusFilter === f.value}
+              variant={statusFilter === f.value ? "default" : "secondary"}
+              onClick={() => setStatusFilter(f.value)}
+            >
+              {f.label} ({counts[f.value] ?? 0})
+            </Button>
+          ))}
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="md:col-span-2">
+            <Input
+              placeholder="Buscar por título, marca, vendedor o ciudad"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={listingFilter} onChange={(e) => setListingFilter(e.target.value)}>
+            <option value="">Venta y permuta</option>
+            <option value="venta">Venta</option>
+            <option value="permuta">Permuta</option>
+            <option value="ambos">Venta o permuta</option>
+          </Select>
+          <label className="flex h-11 items-center gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={onlyFeatured}
+              onChange={(e) => setOnlyFeatured(e.target.checked)}
+            />
+            Solo destacados
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted">
+          <span>
+            Mostrando {filtered.length} de {rows.length} anuncio{rows.length === 1 ? "" : "s"}
+          </span>
+          {hasFilters && (
+            <Button size="sm" variant="ghost" onClick={clearFilters}>
+              Limpiar filtros
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {filtered.length === 0 && (
+        <p className="mt-8 text-center text-sm text-muted">
+          No hay anuncios con esos filtros.
+        </p>
+      )}
+
       <ul className="mt-6 grid gap-3">
-        {rows.map((v) => (
+        {filtered.map((v) => (
           <li
             key={v.id}
             className="flex flex-col gap-3 rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:flex-row sm:items-center"

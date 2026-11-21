@@ -1518,6 +1518,14 @@ export const adminStats = createServerFn({ method: "GET" })
       select count(*)::int as c from vehicles
       where reactivation_requested_at is not null and status = 'pausado'
     `;
+    // Actividad de los últimos 14 días (anuncios publicados y ofertas creadas por día).
+    const activity = await sql<{ day: string; listings: number; offers: number }>`
+      select to_char(d::date, 'YYYY-MM-DD') as day,
+             (select count(*)::int from vehicles v where v.created_at::date = d::date) as listings,
+             (select count(*)::int from offers o where o.created_at::date = d::date) as offers
+      from generate_series(current_date - interval '13 days', current_date, interval '1 day') as d
+      order by d
+    `;
     return {
       users: users[0]?.c ?? 0,
       vehicles: vehicles[0]?.c ?? 0,
@@ -1530,6 +1538,11 @@ export const adminStats = createServerFn({ method: "GET" })
       byStatus,
       byType,
       byCity,
+      activity: activity.map((r) => ({
+        day: r.day,
+        listings: Number(r.listings),
+        offers: Number(r.offers),
+      })),
       recentOffers: recentOffers.map(mapOffer),
       recentDeals: recentDeals.map(
         (r) =>

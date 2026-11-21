@@ -196,3 +196,123 @@ html.am-js [data-am]:not([data-am-in]) { opacity: 0; }
   animation-delay: calc(var(--d, 0) * 110ms);
 }
 [data-am="zoom"][data-am-in] { animation-name: am-zoom; }
+
+/* ===== Dashboard holográfico (admin) ===== */
+@keyframes holo-spin { to { transform: rotate(360deg); } }
+@keyframes holo-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes holo-scan {
+  0% { transform: translateY(-110%); }
+  100% { transform: translateY(1100%); }
+}
+@keyframes holo-sweep {
+  0% { transform: translateX(-60px); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateX(640px); opacity: 0; }
+}
+@keyframes holo-ping {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+@keyframes holo-flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.72; }
+  94% { opacity: 1; }
+  96% { opacity: 0.85; }
+}
+@keyframes holo-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+@keyframes holo-alert {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(240, 180, 41, 0.45), 0 0 18px -4px rgba(240, 180, 41, 0.35); }
+  50% { box-shadow: 0 0 0 1px rgba(240, 180, 41, 0.9), 0 0 30px -2px rgba(240, 180, 41, 0.6); }
+}
+
+.holo-grid-bg {
+  position: relative;
+}
+.holo-grid-bg::before {
+  content: "";
+  position: absolute;
+  inset: -1rem;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(61, 214, 198, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(61, 214, 198, 0.05) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse at 50% 0%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 20%, transparent 75%);
+}
+.holo-grid-bg > * { position: relative; z-index: 1; }
+
+.holo-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(61, 214, 198, 0.28);
+  background:
+    linear-gradient(160deg, rgba(61, 214, 198, 0.09), rgba(18, 32, 51, 0.55) 42%, rgba(18, 32, 51, 0.8)),
+    rgba(10, 18, 32, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 0 40px -18px rgba(61, 214, 198, 0.45),
+    0 0 32px -14px rgba(61, 214, 198, 0.5);
+}
+/* línea de escaneo que recorre el panel */
+.holo-panel::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 14%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(61, 214, 198, 0.13), transparent);
+  animation: holo-scan 6.5s linear infinite;
+}
+/* esquinas tipo marco HUD */
+.holo-corners::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--color-accent), var(--color-accent)) top left / 14px 1.5px no-repeat,
+    linear-gradient(var(--color-accent), var(--color-accent)) top left / 1.5px 14px no-repeat,
+    linear-gradient(var(--color-accent), var(--color-accent)) top right / 14px 1.5px no-repeat,
+    linear-gradient(var(--color-accent), var(--color-accent)) top right / 1.5px 14px no-repeat,
+    linear-gradient(var(--color-accent), var(--color-accent)) bottom left / 14px 1.5px no-repeat,
+    linear-gradient(var(--color-accent), var(--color-accent)) bottom left / 1.5px 14px no-repeat,
+    linear-gradient(var(--color-accent), var(--color-accent)) bottom right / 14px 1.5px no-repeat,
+    linear-gradient(var(--color-accent), var(--color-accent)) bottom right / 1.5px 14px no-repeat;
+  opacity: 0.7;
+}
+.holo-alert { animation: holo-alert 2.2s ease-in-out infinite; border-color: rgba(240, 180, 41, 0.6); }
+
+.holo-title { animation: holo-flicker 7s infinite; text-shadow: 0 0 18px rgba(61, 214, 198, 0.55); }
+.holo-glow-text { text-shadow: 0 0 14px rgba(61, 214, 198, 0.65); }
+
+.holo-ring-a { transform-origin: 110px 110px; animation: holo-spin 28s linear infinite; }
+.holo-ring-b { transform-origin: 110px 110px; animation: holo-spin-rev 18s linear infinite; }
+
+.holo-sweep { animation: holo-sweep 5.5s ease-in-out infinite; }
+.holo-ping { transform-box: fill-box; transform-origin: center; animation: holo-ping 1.8s ease-out infinite; }
+
+.holo-bar-fill { position: relative; overflow: hidden; }
+.holo-bar-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: holo-shimmer 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holo-panel::after, .holo-ring-a, .holo-ring-b, .holo-sweep, .holo-ping,
+  .holo-bar-fill::after, .holo-title, .holo-alert { animation: none !important; }
+}

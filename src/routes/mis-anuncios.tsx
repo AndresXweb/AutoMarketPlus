@@ -222,8 +222,6 @@ function MisAnuncios() {
                         Vendido
                       </Button>
                     )}
-                  <Button
-                    size="sm"
                   {v.status !== "vendido" && (
                     <Link to="/editar/$id" params={{ id: String(v.id) }}>
                       <Button size="sm" variant="secondary">
@@ -231,6 +229,8 @@ function MisAnuncios() {
                       </Button>
                     </Link>
                   )}
+                  <Button
+                    size="sm"
                     variant="danger"
                     onClick={() => {
                       void deleteMyVehicle({ data: { id: v.id } })

@@ -892,6 +892,81 @@ export const requestReactivation = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+
+export const updateMyVehicle = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    vehicleInput.extend({
+      id: z.number(),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    await requireActiveAccount(context.userId);
+    const sql = await getSql();
+    const current = await sql<{ status: string; user_id: string }>`
+      select status, user_id from vehicles where id = ${data.id}
+    `;
+    if (!current[0] || current[0].user_id !== context.userId) {
+      throw new Error("Anuncio no encontrado.");
+    }
+    if (current[0].status === "vendido") {
+      throw new Error("No se puede editar un anuncio marcado como vendido.");
+    }
+    const profile = await sql<{ role: string; verification_status: string }>`
+      select role, verification_status from profiles where user_id = ${context.userId}
+    `;
+    const verified =
+      profile[0]?.role === "admin" || profile[0]?.verification_status === "verificado";
+    let nextStatus = current[0].status;
+    if (current[0].status === "rechazado" || current[0].status === "pendiente_revision") {
+      nextStatus = verified ? "activo" : "pendiente_revision";
+    }
+    const images = data.images.slice(0, 6);
+    const prefs = data.listingType === "venta" ? { any: true } : (data.swapPrefs ?? { any: true });
+    const showWhatsapp = data.showWhatsapp !== false;
+    const acceptLower = data.acceptLowerOffers !== false;
+    const minPercent =
+      acceptLower && data.minOfferPercent != null && data.minOfferPercent > 0
+        ? data.minOfferPercent
+        : null;
+    await sql`
+      update vehicles set
+        title = ${data.title},
+        brand = ${data.brand},
+        model = ${data.model},
+        year = ${data.year},
+        mileage = ${data.mileage},
+        price = ${data.price},
+        condition = ${data.condition},
+        fuel = ${data.fuel},
+        transmission = ${data.transmission},
+        body_type = ${data.bodyType},
+        city = ${data.city},
+        description = ${data.description},
+        image_url = ${images[0]},
+        images = ${JSON.stringify(images)},
+        listing_type = ${data.listingType},
+        status = ${nextStatus},
+        rejection_note = null,
+        soat_expires = ${data.soatExpires || null},
+        tecno_expires = ${data.tecnoExpires || null},
+        taxes_current = ${data.taxesCurrent},
+        taxes_detail = ${data.taxesCurrent ? null : data.taxesDetail ?? null},
+        taxes_amount = ${data.taxesCurrent ? 0 : data.taxesAmount ?? 0},
+        fines_current = ${data.finesCurrent},
+        fines_detail = ${data.finesCurrent ? null : data.finesDetail ?? null},
+        fines_amount = ${data.finesCurrent ? 0 : data.finesAmount ?? 0},
+        swap_any = ${Boolean(prefs.any)},
+        swap_prefs = ${JSON.stringify(prefs)},
+        show_whatsapp = ${showWhatsapp},
+        accept_lower_offers = ${acceptLower},
+        min_offer_percent = ${minPercent},
+        last_activity_at = now()
+      where id = ${data.id} and user_id = ${context.userId}
+    `;
+    return { ok: true, status: nextStatus };
+  });
+
 export const deleteMyVehicle = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(z.object({ id: z.number() }))

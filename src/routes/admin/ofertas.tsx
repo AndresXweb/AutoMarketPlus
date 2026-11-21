@@ -1,10 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { HoloActivity, HoloDonut, HoloPage, HoloPanel, HoloStat, HoloStatusBar } from "@/components/holo-dashboard";
 import { Badge } from "@/components/ui/badge";
+import { bucketByDay, countBy, formatCopCompact } from "@/lib/holo-stats";
 import { OFFER_TYPE_LABEL, STATUS_LABEL, formatCop } from "@/lib/format";
 import { adminListDeals, adminListOffers, type Deal, type Offer } from "@/lib/market";
 
 export const Route = createFileRoute("/admin/ofertas")({ component: OfertasAdmin });
+
+const OFFER_STATUS_COLORS: Record<string, string> = {
+  pendiente: "#f0b429",
+  contraoferta: "#38bdf8",
+  aceptada: "#3dba86",
+  rechazada: "#ff6b6b",
+  cerrada: "#6d809c",
+};
+
+function statusLabel(status: string) {
+  return STATUS_LABEL[status] ?? status.charAt(0).toUpperCase() + status.slice(1);
+}
 
 function OfertasAdmin() {
   const [rows, setRows] = useState<Offer[]>([]);
@@ -20,19 +34,73 @@ function OfertasAdmin() {
       .catch(() => setDeals([]));
   }, []);
 
-  return (
-    <div>
-      <h1 className="font-display text-3xl font-semibold">Ofertas y negocios</h1>
-      <p className="mt-1 text-sm text-muted">
-        {rows.length} ofertas · {deals.length} negocios concretados
-      </p>
+  const stats = useMemo(() => {
+    const open = rows.filter((o) => o.status === "pendiente" || o.status === "contraoferta").length;
+    const accepted = rows.filter((o) => o.status === "aceptada").length;
+    const volume = deals.reduce((sum, d) => sum + (d.finalAmount ?? 0), 0);
+    return {
+      open,
+      accepted,
+      volume,
+      activity: bucketByDay(
+        rows.map((o) => o.createdAt),
+        deals.map((d) => d.acceptedAt),
+      ),
+      types: countBy(rows, (o) => o.offerType).map(([k, value]) => ({
+        name: OFFER_TYPE_LABEL[k] ?? k,
+        value,
+      })),
+      statuses: countBy(rows, (o) => o.status).map(([k, value]) => ({
+        label: statusLabel(k),
+        value,
+        color: OFFER_STATUS_COLORS[k] ?? "#6d809c",
+      })),
+    };
+  }, [rows, deals]);
 
-      <div className="mt-4 flex gap-2">
+  return (
+    <HoloPage
+      title="Ofertas y negocios"
+      subtitle={`${rows.length} ofertas · ${deals.length} negocios concretados`}
+    >
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <HoloStat label="Ofertas" value={rows.length} />
+        <HoloStat label="Abiertas" value={stats.open} alert={stats.open > 0} />
+        <HoloStat label="Aceptadas" value={stats.accepted} />
+        <HoloStat label="Negocios concretados" value={deals.length} />
+        <HoloStat label="Monto concretado" value={stats.volume} format={formatCopCompact} />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <HoloPanel
+          title="Actividad · últimos 14 días"
+          subtitle="Ofertas creadas y negocios concretados por día"
+          className="lg:col-span-2"
+        >
+          <HoloActivity
+            data={stats.activity}
+            series={[
+              { key: "listings", legend: "Ofertas creadas", tip: "Ofertas" },
+              { key: "offers", legend: "Negocios concretados", tip: "Negocios" },
+            ]}
+            ariaLabel="Ofertas y negocios de los últimos 14 días"
+          />
+        </HoloPanel>
+        <HoloPanel title="Por tipo" subtitle="Compra o permuta">
+          <HoloDonut data={stats.types} />
+        </HoloPanel>
+      </div>
+
+      <HoloPanel title="Estado de las ofertas" subtitle="Dónde están las negociaciones" className="mt-6">
+        <HoloStatusBar data={stats.statuses} />
+      </HoloPanel>
+
+      <div className="mt-6 flex gap-2">
         <button
           type="button"
           onClick={() => setTab("deals")}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-            tab === "deals" ? "bg-accent text-bg" : "bg-surface text-muted"
+          className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+            tab === "deals" ? "holo-nav-active" : "border-accent/20 bg-surface/60 text-muted hover:text-fg"
           }`}
         >
           Negocios concretados
@@ -40,8 +108,8 @@ function OfertasAdmin() {
         <button
           type="button"
           onClick={() => setTab("ofertas")}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-            tab === "ofertas" ? "bg-accent text-bg" : "bg-surface text-muted"
+          className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+            tab === "ofertas" ? "holo-nav-active" : "border-accent/20 bg-surface/60 text-muted hover:text-fg"
           }`}
         >
           Todas las ofertas
@@ -54,7 +122,7 @@ function OfertasAdmin() {
             <p className="text-sm text-muted">Aún no hay negocios cerrados.</p>
           )}
           {deals.map((d) => (
-            <li key={d.id} className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+            <li key={d.id} className="holo-row p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone="success">Concretado</Badge>
                 <Badge>{OFFER_TYPE_LABEL[d.offerType] ?? d.offerType}</Badge>
@@ -91,7 +159,10 @@ function OfertasAdmin() {
       ) : (
         <ul className="mt-6 grid gap-3">
           {rows.map((o) => (
-            <li key={o.id} className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+            <li
+              key={o.id}
+              className={`holo-row p-4 ${o.status === "pendiente" ? "holo-row-warn" : ""}`}
+            >
               <div className="flex flex-wrap items-center gap-2">
                 <Badge
                   tone={
@@ -102,7 +173,7 @@ function OfertasAdmin() {
                         : "neutral"
                   }
                 >
-                  {STATUS_LABEL[o.status]}
+                  {statusLabel(o.status)}
                 </Badge>
                 <Badge>{OFFER_TYPE_LABEL[o.offerType]}</Badge>
                 {o.acceptedAt && (
@@ -133,6 +204,6 @@ function OfertasAdmin() {
           ))}
         </ul>
       )}
-    </div>
+    </HoloPage>
   );
 }

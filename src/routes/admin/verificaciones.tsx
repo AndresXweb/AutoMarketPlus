@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HoloBars, HoloPage, HoloPanel, HoloStat, HoloStatusBar } from "@/components/holo-dashboard";
 import { Field, Textarea } from "@/components/ui/input";
 import { STATUS_LABEL } from "@/lib/format";
+import { countBy } from "@/lib/holo-stats";
 import { adminListVerifications, adminReviewVerification, type Profile } from "@/lib/market";
 
 export const Route = createFileRoute("/admin/verificaciones")({ component: Verificaciones });
@@ -21,6 +23,16 @@ function Verificaciones() {
     reload().catch(() => setRows([]));
   }, []);
 
+  const stats = useMemo(() => {
+    const by = (st: string) => rows.filter((u) => u.verificationStatus === st).length;
+    return {
+      pending: by("pendiente"),
+      approved: by("verificado"),
+      rejected: by("rechazado"),
+      docs: countBy(rows, (u) => u.documentType).map(([name, n]) => ({ name, n })),
+    };
+  }, [rows]);
+
   async function review(userId: string, status: "verificado" | "rechazado") {
     try {
       await adminReviewVerification({
@@ -34,15 +46,39 @@ function Verificaciones() {
   }
 
   return (
-    <div>
-      <h1 className="font-display text-3xl font-semibold">Verificaciones</h1>
-      <p className="mt-1 text-sm text-muted">
-        Revisa frente y reverso de la cédula. Al aprobar, los anuncios pendientes de esa persona se publican.
-      </p>
+    <HoloPage
+      title="Verificaciones"
+      subtitle="Revisa frente y reverso de la cédula. Al aprobar, los anuncios pendientes de esa persona se publican."
+    >
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <HoloStat label="Pendientes" value={stats.pending} alert={stats.pending > 0} />
+        <HoloStat label="Verificadas" value={stats.approved} />
+        <HoloStat label="Rechazadas" value={stats.rejected} />
+        <HoloStat label="Solicitudes" value={rows.length} />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <HoloPanel title="Estado de las solicitudes" subtitle="Resultado de la revisión de identidad">
+          <HoloStatusBar
+            data={[
+              { label: "Pendientes", value: stats.pending, color: "#f0b429" },
+              { label: "Verificadas", value: stats.approved, color: "#3dba86" },
+              { label: "Rechazadas", value: stats.rejected, color: "#ff6b6b" },
+            ]}
+          />
+        </HoloPanel>
+        <HoloPanel title="Tipo de documento" subtitle="Documentos presentados">
+          <HoloBars data={stats.docs} />
+        </HoloPanel>
+      </div>
+
       <ul className="mt-6 grid gap-4">
         {rows.length === 0 && <li className="text-sm text-muted">No hay solicitudes.</li>}
         {rows.map((u) => (
-          <li key={u.userId} className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+          <li
+            key={u.userId}
+            className={`holo-row p-4 ${u.verificationStatus === "pendiente" ? "holo-row-warn" : u.verificationStatus === "rechazado" ? "holo-row-danger" : ""}`}
+          >
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-medium">{u.displayName}</p>
               <Badge
@@ -62,14 +98,14 @@ function Verificaciones() {
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {u.idFrontUrl ? (
-                <img src={u.idFrontUrl} alt="Frente cédula" className="h-40 w-full rounded-md object-cover" />
+                <img src={u.idFrontUrl} alt="Frente cédula" className="h-40 w-full rounded-md object-cover ring-1 ring-accent/30" />
               ) : (
-                <div className="grid h-40 place-items-center rounded-md bg-elevated text-sm text-muted">Sin frente</div>
+                <div className="grid h-40 place-items-center rounded-md border border-dashed border-accent/25 bg-elevated/60 text-sm text-muted">Sin frente</div>
               )}
               {u.idBackUrl ? (
-                <img src={u.idBackUrl} alt="Reverso cédula" className="h-40 w-full rounded-md object-cover" />
+                <img src={u.idBackUrl} alt="Reverso cédula" className="h-40 w-full rounded-md object-cover ring-1 ring-accent/30" />
               ) : (
-                <div className="grid h-40 place-items-center rounded-md bg-elevated text-sm text-muted">Sin reverso</div>
+                <div className="grid h-40 place-items-center rounded-md border border-dashed border-accent/25 bg-elevated/60 text-sm text-muted">Sin reverso</div>
               )}
             </div>
             {u.verificationStatus === "pendiente" && (
@@ -94,6 +130,6 @@ function Verificaciones() {
           </li>
         ))}
       </ul>
-    </div>
+    </HoloPage>
   );
 }

@@ -316,3 +316,35 @@ html.am-js [data-am]:not([data-am-in]) { opacity: 0; }
   .holo-panel::after, .holo-ring-a, .holo-ring-b, .holo-sweep, .holo-ping,
   .holo-bar-fill::after, .holo-title, .holo-alert { animation: none !important; }
 }
+
+/* Filas de listas (usuarios, anuncios, ofertas...) con borde luminoso */
+.holo-row {
+  position: relative;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(61, 214, 198, 0.2);
+  background: linear-gradient(135deg, rgba(61, 214, 198, 0.06), rgba(18, 32, 51, 0.7) 40%);
+  box-shadow: inset 3px 0 0 -1px rgba(61, 214, 198, 0.7);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.holo-row:hover {
+  border-color: rgba(61, 214, 198, 0.55);
+  box-shadow: inset 3px 0 0 -1px #3dd6c6, 0 0 22px -8px rgba(61, 214, 198, 0.55);
+}
+.holo-row-warn { border-color: rgba(240, 180, 41, 0.5); box-shadow: inset 3px 0 0 -1px #f0b429; }
+.holo-row-danger { border-color: rgba(255, 107, 107, 0.4); box-shadow: inset 3px 0 0 -1px #ff6b6b; }
+.holo-avatar {
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(61, 214, 198, 0.55);
+  background: radial-gradient(circle at 30% 30%, rgba(61, 214, 198, 0.35), rgba(18, 32, 51, 0.9));
+  box-shadow: 0 0 14px -2px rgba(61, 214, 198, 0.65);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.holo-nav-active {
+  border: 1px solid rgba(61, 214, 198, 0.5);
+  background: linear-gradient(90deg, rgba(61, 214, 198, 0.18), rgba(61, 214, 198, 0.04));
+  box-shadow: 0 0 20px -8px #3dd6c6;
+  color: var(--color-fg);
+}

@@ -71,6 +71,32 @@ export function HoloPanel({
   );
 }
 
+/** Contenedor estándar de las pantallas del admin: rejilla de fondo, título y subtítulo. */
+export function HoloPage({
+  title,
+  subtitle,
+  right,
+  children,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  right?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="holo-grid-bg">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="holo-title font-display text-3xl font-semibold">{title}</h1>
+          {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+        </div>
+        {right}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 export function LiveBadge({ updatedAt }: { updatedAt: Date | null }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-full border border-success/40 bg-success/10 px-3 py-1 text-xs text-success">
@@ -89,11 +115,13 @@ export function HoloStat({
   value,
   alert = false,
   hint,
+  format,
 }: {
   label: string;
   value: number;
   alert?: boolean;
   hint?: string;
+  format?: (n: number) => string;
 }) {
   const shown = useCountUp(value);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -132,7 +160,7 @@ export function HoloStat({
             alert ? "text-warn" : "text-fg",
           )}
         >
-          {shown}
+          {format ? format(shown) : shown}
         </p>
         {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
       </div>
@@ -274,6 +302,13 @@ export function HoloBars({ data }: { data: { name: string; n: number }[] }) {
 
 export type DayPoint = { day: string; listings: number; offers: number };
 
+export type ActivitySeries = { key: "listings" | "offers"; legend: string; tip: string };
+
+const DEFAULT_SERIES: ActivitySeries[] = [
+  { key: "listings", legend: "Anuncios publicados", tip: "Anuncios" },
+  { key: "offers", legend: "Ofertas creadas", tip: "Ofertas" },
+];
+
 function smoothPath(pts: Array<[number, number]>) {
   if (pts.length === 0) return "";
   let d = `M ${pts[0][0]} ${pts[0][1]}`;
@@ -285,7 +320,15 @@ function smoothPath(pts: Array<[number, number]>) {
 }
 
 /** Línea de actividad (14 días) con trazo animado, escáner en movimiento y tooltip por día. */
-export function HoloActivity({ data }: { data: DayPoint[] }) {
+export function HoloActivity({
+  data,
+  series: seriesDef = DEFAULT_SERIES,
+  ariaLabel = "Actividad de los últimos 14 días",
+}: {
+  data: DayPoint[];
+  series?: ActivitySeries[];
+  ariaLabel?: string;
+}) {
   const ready = useReady();
   const [hover, setHover] = useState<number | null>(null);
   const W = 600;
@@ -294,27 +337,25 @@ export function HoloActivity({ data }: { data: DayPoint[] }) {
   const PT = 16;
   const PB = 28;
   const n = data.length;
-  const rawMax = Math.max(1, ...data.flatMap((d) => [d.listings, d.offers]));
+  const rawMax = Math.max(1, ...data.flatMap((d) => seriesDef.map((def) => d[def.key])));
   const maxV = Math.max(3, Math.ceil(rawMax / 3) * 3);
   const step = n > 1 ? (W - PX - 12) / (n - 1) : 0;
   const x = (i: number) => PX + i * step;
   const y = (v: number) => PT + (H - PT - PB) * (1 - v / maxV);
   const base = y(0);
 
-  const series = [
-    { key: "listings" as const, label: "Anuncios publicados", color: ACCENT, id: "a" },
-    { key: "offers" as const, label: "Ofertas creadas", color: SKY, id: "b" },
-  ].map((s) => {
-    const pts = data.map((d, i) => [x(i), y(d[s.key])] as [number, number]);
+  const series = seriesDef.map((def, idx) => {
+    const color = idx === 0 ? ACCENT : SKY;
+    const pts = data.map((d, i) => [x(i), y(d[def.key])] as [number, number]);
     const line = smoothPath(pts);
     const area = pts.length ? `${line} L ${pts[pts.length - 1][0]} ${base} L ${pts[0][0]} ${base} Z` : "";
-    return { ...s, pts, line, area, total: data.reduce((a, d) => a + d[s.key], 0) };
+    return { ...def, id: String(idx), color, pts, line, area, total: data.reduce((a, d) => a + d[def.key], 0) };
   });
 
   if (n === 0) return <p className="text-sm text-muted">Sin datos de actividad.</p>;
 
   const fmt = (day: string) => `${day.slice(8, 10)}/${day.slice(5, 7)}`;
-  const tipX = hover != null ? Math.min(Math.max(x(hover) - 62, 4), W - 128) : 0;
+  const tipX = hover != null ? Math.min(Math.max(x(hover) - 75, 4), W - 154) : 0;
 
   return (
     <div>
@@ -322,11 +363,11 @@ export function HoloActivity({ data }: { data: DayPoint[] }) {
         {series.map((s) => (
           <span key={s.id} className="inline-flex items-center gap-2">
             <span className="size-2.5 rounded-full" style={{ background: s.color, boxShadow: `0 0 8px ${s.color}` }} />
-            {s.label}: <strong className="tabular-nums text-fg">{s.total}</strong>
+            {s.legend}: <strong className="tabular-nums text-fg">{s.total}</strong>
           </span>
         ))}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Actividad de los últimos 14 días" onMouseLeave={() => setHover(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={ariaLabel} onMouseLeave={() => setHover(null)}>
         <defs>
           {series.map((s) => (
             <linearGradient key={s.id} id={`holo-area-${s.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -389,16 +430,15 @@ export function HoloActivity({ data }: { data: DayPoint[] }) {
           <g pointerEvents="none">
             <line x1={x(hover)} x2={x(hover)} y1={PT} y2={base} stroke={ACCENT} strokeOpacity="0.6" strokeDasharray="4 4" />
             <g transform={`translate(${tipX}, ${PT})`}>
-              <rect width="124" height="54" rx="8" fill="#0a1220" fillOpacity="0.92" stroke={ACCENT} strokeOpacity="0.6" />
+              <rect width="150" height={24 + series.length * 15} rx="8" fill="#0a1220" fillOpacity="0.92" stroke={ACCENT} strokeOpacity="0.6" />
               <text x="10" y="17" fontSize="11" fill="#a8b8d0">
                 {fmt(data[hover].day)}
               </text>
-              <text x="10" y="32" fontSize="11" fill={ACCENT}>
-                Anuncios: {data[hover].listings}
-              </text>
-              <text x="10" y="46" fontSize="11" fill={SKY}>
-                Ofertas: {data[hover].offers}
-              </text>
+              {series.map((s, i) => (
+                <text key={s.id} x="10" y={32 + i * 15} fontSize="11" fill={s.color}>
+                  {s.tip}: {data[hover][s.key]}
+                </text>
+              ))}
             </g>
           </g>
         )}

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HoloDonut, HoloPage, HoloPanel, HoloStat, HoloStatusBar } from "@/components/holo-dashboard";
 import { Input, Select } from "@/components/ui/input";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { LISTING_LABEL, STATUS_LABEL, formatCop } from "@/lib/format";
@@ -16,6 +17,14 @@ import {
 } from "@/lib/market";
 
 export const Route = createFileRoute("/admin/anuncios")({ component: Anuncios });
+
+const STATUS_COLORS: Record<string, string> = {
+  activo: "#3dba86",
+  pendiente_revision: "#f0b429",
+  pausado: "#38bdf8",
+  vendido: "#3dd6c6",
+  rechazado: "#ff6b6b",
+};
 
 const STATUS_FILTERS = [
   { value: "todos", label: "Todos" },
@@ -92,6 +101,13 @@ function Anuncios() {
   const hasFilters =
     statusFilter !== "todos" || search.trim() !== "" || listingFilter !== "" || onlyFeatured;
 
+  const featuredCount = useMemo(() => rows.filter((v) => v.featured).length, [rows]);
+  const operations = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const v of rows) m.set(v.listingType, (m.get(v.listingType) ?? 0) + 1);
+    return [...m.entries()].map(([k, value]) => ({ name: LISTING_LABEL[k] ?? k, value }));
+  }, [rows]);
+
   function clearFilters() {
     setStatusFilter("todos");
     setSearch("");
@@ -158,15 +174,40 @@ function Anuncios() {
   }
 
   return (
-    <div>
-      <h1 className="font-display text-3xl font-semibold">Anuncios</h1>
-      <p className="mt-1 text-sm text-muted">
-        {rows.length} publicados. {pending} en espera de aprobación.
-        {requests.length > 0 && ` · ${requests.length} solicitud(es) de reactivación.`}
-      </p>
+    <HoloPage
+      title="Anuncios"
+      subtitle={
+        <>
+          {rows.length} publicados. {pending} en espera de aprobación.
+          {requests.length > 0 && ` · ${requests.length} solicitud(es) de reactivación.`}
+        </>
+      }
+    >
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <HoloStat label="Anuncios" value={rows.length} />
+        <HoloStat label="Activos" value={counts.activo ?? 0} />
+        <HoloStat label="En revisión" value={pending} alert={pending > 0} />
+        <HoloStat label="Rechazados" value={counts.rechazado ?? 0} />
+        <HoloStat label="Destacados" value={featuredCount} />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <HoloPanel title="Estado del inventario" subtitle="Anuncios según su estado">
+          <HoloStatusBar
+            data={Object.keys(STATUS_COLORS).map((st) => ({
+              label: STATUS_LABEL[st] ?? st,
+              value: counts[st] ?? 0,
+              color: STATUS_COLORS[st],
+            }))}
+          />
+        </HoloPanel>
+        <HoloPanel title="Por operación" subtitle="Venta, permuta o ambas">
+          <HoloDonut data={operations}}
+        </HoloPanel>
+      </div>
 
       {requests.length > 0 && (
-        <div className="mt-6 rounded-xl border border-amber-500/40 bg-surface p-4">
+        <div className="holo-panel holo-corners holo-alert mt-6 p-4">
           <h2 className="font-display text-lg font-semibold">Solicitudes de reactivación</h2>
           <ul className="mt-3 grid gap-3">
             {requests.map((v) => (
@@ -216,7 +257,7 @@ function Anuncios() {
 
       {rejectId != null && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-surface p-5 shadow-lg">
+          <div className="holo-panel holo-corners w-full max-w-md p-5">
             <h2 className="font-display text-xl font-semibold">Motivo del rechazo</h2>
             <p className="mt-1 text-sm text-muted">
               El vendedor verá este texto en Mis anuncios. Sé claro y concreto.
@@ -249,7 +290,7 @@ function Anuncios() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-3 rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+      <div className="holo-panel holo-corners mt-6 grid gap-3 p-4">
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filtrar por estado">
           {STATUS_FILTERS.map((f) => (
             <Button
@@ -309,9 +350,9 @@ function Anuncios() {
         {filtered.map((v) => (
           <li
             key={v.id}
-            className="flex flex-col gap-3 rounded-xl bg-surface p-4 shadow-[var(--shadow-border)] sm:flex-row sm:items-center"
+            className={`holo-row flex flex-col gap-3 p-4 sm:flex-row sm:items-center ${v.status === "pendiente_revision" ? "holo-row-warn" : v.status === "rechazado" ? "holo-row-danger" : ""}`}
           >
-            <img src={v.imageUrl} alt="" className="h-20 w-full rounded-lg object-cover sm:w-32" />
+            <img src={v.imageUrl} alt="" className="h-20 w-full rounded-lg object-cover ring-1 ring-accent/30 sm:w-32" />
             <div className="min-w-0 flex-1">
               <Link to="/vehiculo/$id" params={{ id: String(v.id) }} className="font-medium">
                 {v.title}
@@ -393,6 +434,6 @@ function Anuncios() {
           </li>
         ))}
       </ul>
-    </div>
+    </HoloPage>
   );
 }

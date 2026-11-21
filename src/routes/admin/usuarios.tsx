@@ -9,6 +9,7 @@ import { VerifiedBadge } from "@/components/verified-badge";
 import { bucketByDay, countBy } from "@/lib/holo-stats";
 import { CITIES, DOC_TYPES, STATUS_LABEL } from "@/lib/format";
 import {
+  adminCreateUser,
   adminDeleteUser,
   adminListUsers,
   adminSetAccountStatus,
@@ -29,6 +30,7 @@ const VERIF_LABEL: Record<string, string> = {
 function Usuarios() {
   const [rows, setRows] = useState<Profile[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   async function reload() {
     setRows(await adminListUsers());
@@ -119,7 +121,74 @@ function Usuarios() {
     <HoloPage
       title="Usuarios"
       subtitle={`${rows.length} perfiles. Puedes editar datos, deshabilitar o eliminar. La contraseña solo la cambia el titular.`}
+      right={
+        <Button size="sm" onClick={() => setCreating((c) => !c)}>
+          {creating ? "Cerrar" : "Crear usuario"}
+        </Button>
+      }
     >
+      {creating && (
+        <form
+          className="holo-panel holo-corners mt-6 grid gap-3 p-4 sm:grid-cols-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            void adminCreateUser({
+              data: {
+                firstName: String(fd.get("firstName")),
+                lastName: String(fd.get("lastName")),
+                email: String(fd.get("email")),
+                password: String(fd.get("password")),
+                phone: String(fd.get("phone") || "") || undefined,
+                city: String(fd.get("city") || "") || undefined,
+                role: String(fd.get("role") || "cliente") as "admin" | "cliente",
+              },
+            })
+              .then(() => {
+                toast.success("Usuario creado.");
+                setCreating(false);
+                return reload();
+              })
+              .catch((err) =>
+                toast.error(err instanceof Error ? err.message : "No se pudo crear."),
+              );
+          }}
+        >
+          <Field label="Nombres">
+            <Input name="firstName" required minLength={2} />
+          </Field>
+          <Field label="Apellidos">
+            <Input name="lastName" required minLength={2} />
+          </Field>
+          <Field label="Correo">
+            <Input name="email" type="email" required />
+          </Field>
+          <Field label="Contraseña temporal">
+            <Input name="password" type="password" required minLength={8} />
+          </Field>
+          <Field label="Teléfono">
+            <Input name="phone" />
+          </Field>
+          <Field label="Ciudad">
+            <Select name="city" defaultValue="Bogotá">
+              {CITIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Rol">
+            <Select name="role" defaultValue="cliente">
+              <option value="cliente">cliente</option>
+              <option value="admin">admin</option>
+            </Select>
+          </Field>
+          <div className="sm:col-span-2">
+            <Button type="submit" size="sm">
+              Crear usuario
+            </Button>
+          </div>
+        </form>
+      )}
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <HoloStat label="Usuarios" value={rows.length} />
         <HoloStat label="Verificados" value={stats.verified} />

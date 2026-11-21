@@ -1722,6 +1722,59 @@ export const adminSetAccountStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+
+export const adminCreateUser = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      firstName: z.string().min(2).max(60),
+      lastName: z.string().min(2).max(60),
+      email: z.string().email(),
+      password: z.string().min(8).max(128),
+      phone: z.string().max(30).optional(),
+      city: z.string().max(60).optional(),
+      role: z.enum(["admin", "cliente"]).default("cliente"),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context.userId);
+    const sql = await getSql();
+    const exists = await sql<{ id: string }>`
+      select id from "user" where email = ${data.email.toLowerCase()}
+    `;
+    if (exists.length) throw new Error("Ya existe un usuario con ese correo.");
+    const { hashPassword } = await import("better-auth/crypto");
+    const hashed = await hashPassword(data.password);
+    const userId = crypto.randomUUID();
+    const displayName = `${data.firstName} ${data.lastName}`.trim();
+    const now = new Date().toISOString();
+    await sql`
+      insert into "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
+      values (${userId}, ${displayName}, ${data.email.toLowerCase()}, true, ${now}, ${now})
+    `;
+    await sql`
+      insert into "account" (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+      values (
+        ${crypto.randomUUID()}, ${userId}, 'credential', ${userId},
+        ${hashed}, ${now}, ${now}
+      )
+    `;
+    await sql`
+      insert into profiles (
+        user_id, display_name, first_name, last_name, email, phone, city,
+        role, verification_status, account_status, verified_at
+      ) values (
+        ${userId}, ${displayName}, ${data.firstName}, ${data.lastName},
+        ${data.email.toLowerCase()}, ${data.phone ?? null}, ${data.city ?? null},
+        ${data.role},
+        ${data.role === "admin" ? "verificado" : "sin_verificar"},
+        'activo',
+        ${data.role === "admin" ? now : null}
+      )
+    `;
+    return { ok: true, userId };
+  });
+
 export const adminDeleteUser = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(z.object({ userId: z.string() }))

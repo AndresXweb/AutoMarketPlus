@@ -224,6 +224,13 @@ function MisAnuncios() {
                     )}
                   <Button
                     size="sm"
+                  {v.status !== "vendido" && (
+                    <Link to="/editar/$id" params={{ id: String(v.id) }}>
+                      <Button size="sm" variant="secondary">
+                        Editar
+                      </Button>
+                    </Link>
+                  )}
                     variant="danger"
                     onClick={() => {
                       void deleteMyVehicle({ data: { id: v.id } })

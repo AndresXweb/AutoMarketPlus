@@ -202,7 +202,7 @@ function Anuncios() {
           />
         </HoloPanel>
         <HoloPanel title="Por operación" subtitle="Venta, permuta o ambas">
-          <HoloDonut data={operations}}
+          <HoloDonut data={operations} />
         </HoloPanel>
       </div>
 

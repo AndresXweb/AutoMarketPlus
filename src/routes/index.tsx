@@ -29,13 +29,14 @@ function Home() {
         <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 md:grid-cols-12 md:py-24">
           {/* Texto */}
           <div className="relative z-10 md:col-span-6">
-            <p className="inline-flex rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">
+            <div aria-hidden className="pointer-events-none absolute -inset-x-16 -inset-y-12 -z-10 bg-[radial-gradient(closest-side,rgba(4,9,20,0.78),rgba(4,9,20,0.45)_60%,transparent)]" />
+            <p className="inline-flex rounded-full border border-sky-300/40 bg-[#050b17]/85 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-sky-200">
               Marketplace de vehículos
             </p>
-            <h1 className="am-hero-title mt-5 font-display text-4xl font-semibold leading-[1.05] md:text-6xl">
+            <h1 className="am-hero-title mt-5 text-4xl font-bold leading-[1.08] tracking-tight [font-family:inherit] [text-shadow:0_2px_4px_rgba(3,8,18,0.9),0_4px_28px_rgba(3,8,18,0.95)] md:text-6xl" style={{ background: "none", WebkitTextFillColor: "#ffffff", color: "#ffffff" }}>
               Compra, vende o permuta con confianza.
             </h1>
-            <p className="mt-5 max-w-md text-base leading-relaxed text-muted md:text-lg">
+            <p className="mt-5 max-w-md text-base font-medium leading-relaxed text-white [text-shadow:0_1px_3px_rgba(3,8,18,1),0_2px_18px_rgba(3,8,18,0.95)] md:text-lg">
               AutoMarket conecta dueños reales en Colombia. Publica tu vehículo,
               envía una oferta formal o propone una permuta clara y segura.
             </p>
@@ -55,32 +56,20 @@ function Home() {
 
           {/* Carro flotante 3D + stats */}
           <div className="relative z-10 md:col-span-6">
-            <div className="am-float-car relative mx-auto max-w-md">
-              <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-accent/25 via-sky-500/10 to-transparent blur-2xl" />
-              <div className="relative overflow-hidden rounded-[1.4rem] border border-accent/25 bg-elevated/40 shadow-[var(--shadow-float)]">
-                <img
-                  src="/vehicles/hero.jpg"
-                  alt="Vehículo destacado"
-                  className="aspect-[16/11] w-full object-cover"
-                />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/80 via-transparent to-white/5" />
-              </div>
-              {/* reflejo / base */}
-              <div className="mx-auto mt-3 h-3 w-3/4 rounded-full bg-accent/20 blur-md" />
-            </div>
+            <div aria-hidden className="h-56 md:h-64" />
 
-            <div className="am-float-soft am-glass relative z-20 mx-auto -mt-8 grid max-w-sm grid-cols-2 gap-2 rounded-2xl p-3">
+            <div className="am-float-soft am-glass relative z-20 ml-auto mt-0 md:top-14 grid max-w-md grid-cols-2 gap-1.5 rounded-xl p-2 md:grid-cols-4">
               {[
                 { label: "Activos", value: stats.active },
                 { label: "En venta", value: stats.sale },
                 { label: "Permuta", value: stats.swap },
                 { label: "Verificados", value: stats.verified },
               ].map((s) => (
-                <div key={s.label} className="rounded-xl bg-bg/50 px-3 py-3">
+                <div key={s.label} className="rounded-lg bg-bg/60 px-2.5 py-2">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-accent/90">
                     {s.label}
                   </p>
-                  <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">
+                  <p className="mt-0.5 font-display text-xl font-semibold tabular-nums text-fg">
                     {s.value}
                   </p>
                 </div>

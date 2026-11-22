@@ -30,6 +30,7 @@ import { Route as AdminContactosRouteImport } from './routes/admin/contactos'
 import { Route as AdminOfertasRouteImport } from './routes/admin/ofertas'
 import { Route as AdminUsuariosRouteImport } from './routes/admin/usuarios'
 import { Route as AdminVerificacionesRouteImport } from './routes/admin/verificaciones'
+import { Route as EditarIdRouteImport } from './routes/editar.$id'
 import { Route as VehiculoIdRouteImport } from './routes/vehiculo.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -138,6 +139,11 @@ const AdminVerificacionesRoute = AdminVerificacionesRouteImport.update({
   path: '/verificaciones',
   getParentRoute: () => AdminRoute,
 } as any)
+const EditarIdRoute = EditarIdRouteImport.update({
+  id: '/editar/$id',
+  path: '/editar/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VehiculoIdRoute = VehiculoIdRouteImport.update({
   id: '/vehiculo/$id',
   path: '/vehiculo/$id',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/admin/ofertas': typeof AdminOfertasRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/verificaciones': typeof AdminVerificacionesRoute
+  '/editar/$id': typeof EditarIdRoute
   '/vehiculo/$id': typeof VehiculoIdRoute
   '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/admin/ofertas': typeof AdminOfertasRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/verificaciones': typeof AdminVerificacionesRoute
+  '/editar/$id': typeof EditarIdRoute
   '/vehiculo/$id': typeof VehiculoIdRoute
   '/admin': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/admin/ofertas': typeof AdminOfertasRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/verificaciones': typeof AdminVerificacionesRoute
+  '/editar/$id': typeof EditarIdRoute
   '/vehiculo/$id': typeof VehiculoIdRoute
   '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
     | '/admin/ofertas'
     | '/admin/usuarios'
     | '/admin/verificaciones'
+    | '/editar/$id'
     | '/vehiculo/$id'
     | '/admin/'
     | '/api/auth/$'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/admin/ofertas'
     | '/admin/usuarios'
     | '/admin/verificaciones'
+    | '/editar/$id'
     | '/vehiculo/$id'
     | '/admin'
     | '/api/auth/$'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/admin/ofertas'
     | '/admin/usuarios'
     | '/admin/verificaciones'
+    | '/editar/$id'
     | '/vehiculo/$id'
     | '/admin/'
     | '/api/auth/$'
@@ -317,6 +329,7 @@ export interface RootRouteChildren {
   RestablecerRoute: typeof RestablecerRoute
   SolicitudesRoute: typeof SolicitudesRoute
   TerminosRoute: typeof TerminosRoute
+  EditarIdRoute: typeof EditarIdRoute
   VehiculoIdRoute: typeof VehiculoIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -470,6 +483,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminVerificacionesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/editar/$id': {
+      id: '/editar/$id'
+      path: '/editar/$id'
+      fullPath: '/editar/$id'
+      preLoaderRoute: typeof EditarIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vehiculo/$id': {
       id: '/vehiculo/$id'
       path: '/vehiculo/$id'
@@ -523,6 +543,7 @@ const rootRouteChildren: RootRouteChildren = {
   RestablecerRoute: RestablecerRoute,
   SolicitudesRoute: SolicitudesRoute,
   TerminosRoute: TerminosRoute,
+  EditarIdRoute: EditarIdRoute,
   VehiculoIdRoute: VehiculoIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

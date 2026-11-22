@@ -42,11 +42,7 @@ function AuthSlot({ isAdmin }: { isAdmin: boolean }) {
 
 function Mark() {
   return (
-    <span className="grid size-8 place-items-center rounded-md bg-accent text-accent-fg">
-      <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden>
-        <path d="M5 17a2 2 0 1 0 4 0H5Zm10 0a2 2 0 1 0 4 0h-4ZM4.2 11l1.4-4.2A2 2 0 0 1 7.5 5.5h9a2 2 0 0 1 1.9 1.3L20 11H4.2ZM3 12h18v3.5a1.5 1.5 0 0 1-1.5 1.5H19a3 3 0 0 0-6 0H11a3 3 0 0 0-6 0H4.5A1.5 1.5 0 0 1 3 15.5V12Z" />
-      </svg>
-    </span>
+    <img src="/logo-automarket.jpg" alt="AutoMarket" className="h-8 w-8 rounded-lg object-cover shrink-0" />
   );
 }
 

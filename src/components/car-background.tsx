@@ -1,30 +1,141 @@
 import { useEffect, useRef } from "react";
 
 type Tile = {
-  x: number; y: number; w: number; h: number; // recorte en la imagen
-  u: number; v: number; // posición relativa (0-1) del centro
-  dl: number; // retraso
-  vx: number; vy: number; r: number; z: number; // fuga, giro y profundidad
+  x: number; y: number; w: number; h: number;
+  u: number; v: number;
+  dl: number;
+  vx: number; vy: number; r: number; z: number;
 };
 
-const TS = 11; // tamaño del fragmento (px de la imagen)
+const TS = 11;
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const ease = (t: number) => t * t * (3 - 2 * t);
+
+// AJUSTE 1: luminancia (0-255) por debajo de la cual un pixel conectado al borde
+// se considera fondo. Si todavia se ve fondo alrededor del logo, subelo (110, 130).
+// Si se come partes oscuras del logo, bajalo (70, 55).
+const BG_LUM = 90;
+
+// AJUSTE 2: ancho del difuminado en los bordes de la imagen (fraccion, 0.03 = 3%).
+const EDGE_FEATHER = 0.03;
+
+function featherSides(img: HTMLImageElement): HTMLCanvasElement {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const x = c.getContext("2d");
+  if (!x) return c;
+  x.drawImage(img, 0, 0);
+  x.globalCompositeOperation = "destination-in";
+  const g = x.createLinearGradient(0, 0, w, 0);
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(0.06, "rgba(0,0,0,1)");
+  g.addColorStop(0.94, "rgba(0,0,0,1)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g;
+  x.fillRect(0, 0, w, h);
+  return c;
+}
 
 const REVEAL =
   ".am-car ~ * :is(h1, h2, .am-card-3d, a:has(> button))";
 
 /**
- * Carro de fondo: nítido cuando está armado; al bajar se rompe en
- * fragmentos y al subir se vuelve a armar. También maneja:
- * - barra de progreso del scroll
- * - menú que se oculta al bajar y aparece al subir
- * - transiciones de entrada de los textos y tarjetas (sin editarlos)
- * Úsalo UNA vez, como primer hijo dentro de <SiteShell> en la página de inicio.
+ * Quita el fondo oscuro del JPG (solo el conectado a los bordes) y difumina los bordes,
+ * para que se vea unicamente el logo, sin rectangulo.
+ */
+function removeBackground(img: HTMLImageElement): HTMLCanvasElement {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const x = c.getContext("2d", { willReadFrequently: true });
+  if (!x) return c;
+  x.drawImage(img, 0, 0);
+
+  let im: ImageData;
+  try {
+    im = x.getImageData(0, 0, w, h);
+  } catch {
+    return c;
+  }
+  const d = im.data;
+
+  // Si el archivo ya trae transparencia (PNG), no se toca.
+  if (d[3] < 250) return c;
+
+  const lumAt = (p: number) => {
+    const i = p * 4;
+    return 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+  };
+
+  const bg = new Uint8Array(w * h);
+  const stack: number[] = [];
+  const push = (p: number) => {
+    if (bg[p] || lumAt(p) >= BG_LUM) return;
+    bg[p] = 1;
+    stack.push(p);
+  };
+
+  for (let i = 0; i < w; i++) {
+    push(i);
+    push((h - 1) * w + i);
+  }
+  for (let j = 0; j < h; j++) {
+    push(j * w);
+    push(j * w + w - 1);
+  }
+  while (stack.length) {
+    const p = stack.pop() as number;
+    const px = p % w;
+    if (px > 0) push(p - 1);
+    if (px < w - 1) push(p + 1);
+    if (p >= w) push(p - w);
+    if (p < w * (h - 1)) push(p + w);
+  }
+
+  // Pixeles de fondo -> transparentes (con transicion suave cerca del logo)
+  for (let p = 0; p < w * h; p++) {
+    if (!bg[p]) continue;
+    const t = clamp((lumAt(p) - BG_LUM * 0.6) / (BG_LUM * 0.4), 0, 1);
+    d[p * 4 + 3] = Math.round(ease(t) * 255);
+  }
+  x.putImageData(im, 0, 0);
+
+  // Difuminado de los 4 bordes para que no quede ningun corte duro
+  x.globalCompositeOperation = "destination-in";
+  const fx = Math.max(2, w * EDGE_FEATHER);
+  const fy = Math.max(2, h * EDGE_FEATHER);
+
+  const gh = x.createLinearGradient(0, 0, w, 0);
+  gh.addColorStop(0, "rgba(0,0,0,0)");
+  gh.addColorStop(fx / w, "rgba(0,0,0,1)");
+  gh.addColorStop(1 - fx / w, "rgba(0,0,0,1)");
+  gh.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = gh;
+  x.fillRect(0, 0, w, h);
+
+  const gv = x.createLinearGradient(0, 0, 0, h);
+  gv.addColorStop(0, "rgba(0,0,0,0)");
+  gv.addColorStop(fy / h, "rgba(0,0,0,1)");
+  gv.addColorStop(1 - fy / h, "rgba(0,0,0,1)");
+  gv.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = gv;
+  x.fillRect(0, 0, w, h);
+
+  x.globalCompositeOperation = "source-over";
+  return c;
+}
+
+/**
+ * Logo centrado de fondo: al bajar se desarma en particulas; al subir se arma.
  */
 export function CarBackground({
-  src = "/ferrari.webp",
-  screens = 1.6, // cuántas pantallas de scroll tarda en desarmarse
+  src = "/hero-bg.jpg",
+  screens = 1.6,
 }: {
   src?: string;
   screens?: number;
@@ -42,6 +153,7 @@ export function CarBackground({
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const header = document.querySelector<HTMLElement>("header");
     const img = new Image();
+    let sprite: HTMLImageElement | HTMLCanvasElement = img;
     const tiles: Tile[] = [];
     let W = 0, H = 0, IW = 0, IH = 0;
     let bx = 0, by = 0, bw = 1, bh = 1;
@@ -55,22 +167,23 @@ export function CarBackground({
       cv.height = H * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (!IW) return;
-      const mobile = W < 860;
-      bw = mobile ? W * 1.02 : Math.min(W * 0.64, H * 1.9);
-      bh = (bw * IH) / IW;
-      bx = mobile ? (W - bw) / 2 : W - bw + W * 0.03;
-      by = mobile ? H * 0.52 - bh / 2 : H * 0.56 - bh / 2;
+      const scale = Math.max(W / IW, H / IH) * 0.80; // tamaño del fondo: 0.82 (más chico = número menor)
+      bw = IW * scale;
+      bh = IH * scale;
+      bx = (W - bw) / 2;
+      by = H - bh;
     };
 
     const build = () => {
-      IW = img.naturalWidth;
-      IH = img.naturalHeight;
+      sprite = featherSides(img);
+      IW = sprite.width;
+      IH = sprite.height;
       const o = document.createElement("canvas");
       o.width = IW;
       o.height = IH;
-      const c = o.getContext("2d");
+      const c = o.getContext("2d", { willReadFrequently: true });
       if (!c) return;
-      c.drawImage(img, 0, 0);
+      c.drawImage(sprite, 0, 0);
       const d = c.getImageData(0, 0, IW, IH).data;
       for (let y = 0; y < IH; y += TS) {
         for (let x = 0; x < IW; x += TS) {
@@ -86,9 +199,9 @@ export function CarBackground({
             x, y, w, h,
             u: (x + w / 2) / IW,
             v: (y + h / 2) / IH,
-            dl: Math.random() * 0.26 + (1 - x / IW) * 0.14,
-            vx: Math.cos(a) * s * 640 + 200,
-            vy: Math.sin(a) * s * 480 - 220,
+            dl: Math.random() * 0.26 + Math.abs(0.5 - x / IW) * 0.12,
+            vx: Math.cos(a) * s * 640,
+            vy: Math.sin(a) * s * 480 - 180,
             r: (Math.random() - 0.5) * 10,
             z: Math.random(),
           });
@@ -107,36 +220,24 @@ export function CarBackground({
       ctx.clearRect(0, 0, W, H);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      const p = cur, k = bw / IW, ox = cmx * -22, oy = cmy * -12;
+      const p = cur, k = bw / IW, ox = cmx * -18, oy = cmy * -10;
       const now = performance.now() * 0.001;
 
-      // sombra de piso
-      const sa = 1 - clamp(p * 3, 0, 1);
-      if (sa > 0) {
-        ctx.save();
-        ctx.globalAlpha = sa;
-        ctx.translate(bx + bw * 0.5 + ox, by + bh * 0.97);
-        ctx.scale(1, 0.09);
-        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, bw * 0.52);
-        g.addColorStop(0, "rgba(0,0,0,.85)");
-        g.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(0, 0, bw * 0.52, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
+      // Transparencia para que el texto se lea encima
+      const baseAlpha = 1;
       if (p < 0.0015) {
-        ctx.drawImage(img, bx + ox, by + oy, bw, bh); // imagen completa, nítida
+        ctx.save();
+        ctx.globalAlpha = baseAlpha;
+        ctx.drawImage(sprite, bx + ox, by + oy, bw, bh);
+        ctx.restore();
       } else {
         for (let i = 0; i < tiles.length; i++) {
           const q = tiles[i];
           const l = ease(clamp((p - q.dl * 0.9) / 0.6, 0, 1));
-          const al = 1 - l * 0.9;
-          if (al < 0.03) continue;
+          const al = (1 - l * 0.9) * baseAlpha;
+          if (al < 0.02) continue;
           const X = bx + q.u * bw + ox + q.vx * l * (0.55 + q.z);
-          const Y = by + q.v * bh + oy + q.vy * l * (0.55 + q.z) - l * l * 170 * q.z + Math.sin(now + i) * l * 8;
+          const Y = by + q.v * bh + oy + q.vy * l * (0.55 + q.z) - l * l * 160 * q.z + Math.sin(now + i) * l * 8;
           const sc = 1 - l * 0.45;
           const dw = q.w * k * sc + 0.7;
           const dh = q.h * k * sc + 0.7;
@@ -144,23 +245,11 @@ export function CarBackground({
           ctx.translate(X, Y);
           ctx.rotate(q.r * l);
           ctx.globalAlpha = al;
-          ctx.drawImage(img, q.x, q.y, q.w, q.h, -dw / 2, -dh / 2, dw, dh);
+          ctx.drawImage(sprite, q.x, q.y, q.w, q.h, -dw / 2, -dh / 2, dw, dh);
           ctx.restore();
         }
       }
 
-      // difumina el carro a la izquierda para que el texto se lea siempre
-      if (W >= 860) {
-        ctx.save();
-        ctx.globalCompositeOperation = "destination-out";
-        const f = ctx.createLinearGradient(0, 0, bx + bw * 0.16, 0);
-        f.addColorStop(0, "rgba(0,0,0,.95)");
-        f.addColorStop(0.55, "rgba(0,0,0,.55)");
-        f.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = f;
-        ctx.fillRect(0, 0, bx + bw * 0.16, H);
-        ctx.restore();
-      }
       raf = requestAnimationFrame(frame);
     };
 
@@ -180,7 +269,6 @@ export function CarBackground({
       my = e.clientY / window.innerHeight - 0.5;
     };
 
-    // Transiciones de entrada para textos y tarjetas de la página
     const html = document.documentElement;
     html.classList.add("am-js");
     const revealed: HTMLElement[] = [];
@@ -195,8 +283,8 @@ export function CarBackground({
       { threshold: 0.15, rootMargin: "0px 0px -6% 0px" },
     );
     document.querySelectorAll<HTMLElement>(REVEAL).forEach((el) => {
-      if (el.closest('[class*="am-float"]')) return; // no tocar lo que ya flota
-      if (el.parentElement?.closest("[data-am]")) return; // solo el elemento exterior
+      if (el.closest('[class*="am-float"]')) return;
+      if (el.parentElement?.closest("[data-am]")) return;
       const idx = Array.from(el.parentElement?.children ?? []).indexOf(el);
       el.style.setProperty("--d", String(Math.min(Math.max(idx, 0), 6)));
       el.setAttribute("data-am", el.matches(".am-card-3d") ? "zoom" : "up");

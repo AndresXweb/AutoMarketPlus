@@ -7,7 +7,7 @@ type Tile = {
   vx: number; vy: number; r: number; z: number;
 };
 
-const TS = 11;
+const TS = 32;
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const ease = (t: number) => t * t * (3 - 2 * t);
 
@@ -20,14 +20,15 @@ const BG_LUM = 90;
 const EDGE_FEATHER = 0.03;
 
 function featherSides(img: HTMLImageElement): HTMLCanvasElement {
-  const w = img.naturalWidth;
-  const h = img.naturalHeight;
+  const sc = Math.min(1, 1280 / img.naturalWidth);
+  const w = Math.round(img.naturalWidth * sc);
+  const h = Math.round(img.naturalHeight * sc);
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
   const x = c.getContext("2d");
   if (!x) return c;
-  x.drawImage(img, 0, 0);
+  x.drawImage(img, 0, 0, w, h);
   x.globalCompositeOperation = "destination-in";
   const g = x.createLinearGradient(0, 0, w, 0);
   g.addColorStop(0, "rgba(0,0,0,0)");
@@ -217,6 +218,8 @@ export function CarBackground({
       if (Math.abs(target - cur) < 0.0004) cur = target;
       cmx += (mx - cmx) * 0.06;
       cmy += (my - cmy) * 0.06;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.globalAlpha = 1;
       ctx.clearRect(0, 0, W, H);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
@@ -241,12 +244,10 @@ export function CarBackground({
           const sc = 1 - l * 0.45;
           const dw = q.w * k * sc + 0.7;
           const dh = q.h * k * sc + 0.7;
-          ctx.save();
-          ctx.translate(X, Y);
-          ctx.rotate(q.r * l);
+          const cs = Math.cos(q.r * l), sn = Math.sin(q.r * l);
+          ctx.setTransform(cs * dpr, sn * dpr, -sn * dpr, cs * dpr, X * dpr, Y * dpr);
           ctx.globalAlpha = al;
           ctx.drawImage(sprite, q.x, q.y, q.w, q.h, -dw / 2, -dh / 2, dw, dh);
-          ctx.restore();
         }
       }
 

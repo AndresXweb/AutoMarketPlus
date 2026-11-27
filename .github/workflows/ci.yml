@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, "test/**"]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx vitest run --coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: automarket
+          POSTGRES_PASSWORD: automarket
+          POSTGRES_DB: automarket_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U automarket -d automarket_test"
+          --health-interval 2s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql://automarket:automarket@localhost:5433/automarket_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run db:migrate
+      - run: npm run test:integration
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: automarket
+          POSTGRES_PASSWORD: automarket
+          POSTGRES_DB: automarket_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U automarket -d automarket_test"
+          --health-interval 2s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql://automarket:automarket@localhost:5433/automarket_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run db:migrate
+      - name: Start app
+        run: npm run dev > app.log 2>&1 &
+      - name: Wait for app
+        run: curl --silent --fail --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080
+      - run: npx playwright install --with-deps chromium
+        working-directory: e2e
+      - run: npx playwright test
+        working-directory: e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            app.log
+          retention-days: 7
